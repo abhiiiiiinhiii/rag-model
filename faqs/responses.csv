@@ -1,0 +1,583 @@
+category,question,answer
+Simple,What is a Purchase Order?,"A Purchase Order (PO) is a part of the Inbound Logistics process that streamlines procurement by creating and managing orders for goods from vendors. The PO process can be done manually or through system integrations. It ensures precise order details, efficient supplier communication, and real-time tracking."
+Simple,How do I create a user?,"Here's how to create a user:
+
+1.  **Navigate to Users:** Go to the **Admin/Setup** module and select **Users**.
+2.  **Initiate User Creation:** Click on **Add User**.
+3.  **Enter User Details:** Provide the user's name, email, and contact number.
+4.  **Assign Role and Credentials:** Assign an appropriate role and set a username and password for the user.
+5.  **Save User:** Click **Submit** to save the new user profile."
+Simple,What is an ASN?,"An **Advanced Shipment Notice (ASN)** provides early visibility of incoming shipments. It is created based on a **Purchase Order (PO)**, and its quantity must be less than or equal to the PO quantity. Multiple ASNs can be made for a single PO to manage partial shipments."
+Simple,What is a GRN for?,The purpose of a **Goods Receipt Note (GRN)** is to verify the quantity and quality of received goods against the **Purchase Order (PO)** or **Advanced Shipment Notice (ASN)**. This process is a crucial step in the **Inbound Logistics** process.
+Simple,What is Putaway?,**Putaway** is the process of moving goods from the receiving area to their final storage locations. It ensures efficient storage and accurate inventory by assigning items to bins or shelves.
+Simple,What are the two types of Putaway?,"The two types of **Putaway** processes are:
+
+*   **Pallet Putaway:** The entire pallet is moved to a single location, ideal for bulk storage.
+*   **Item-Wise Putaway:** Items from a single pallet are stored in different locations, ideal for mixed-SKU pallets."
+Simple,How do I view the full inventory?,"To view the full inventory, follow these steps:
+
+1.  **Navigate:** Go to **Inventory > Full Inventory**.
+2.  **View Inventory:** The system will display the total inventory, often categorized by stock type, such as ""Good"" or ""Bad"" stock.
+3.  **Download Data:**
+    *   Click ""Click here to download full inventory"" to get the complete data in a standard file format.
+    *   Click the **Export** button to download details with advanced filters for further analysis."
+Simple,What is a cycle count?,"The **Cycle Count** feature allows for periodic inventory counts to ensure accuracy without needing a full physical inventory. This helps identify discrepancies and maintain inventory integrity. A cycle count cannot be performed on a location if it has inventory blocked for an order.
+
+Here's how to perform a cycle count:
+
+**Via Web:**
+
+1.  **Navigate:** Go to Inventory > Cycle Count.
+2.  **Start New Count:** Click New Cycle Count.
+3.  **Scan Location:** In the form, scan the Address, LPN No, and Item No. Other details like Lot No or Expiry Date may also be required.
+4.  **Handle Empty Bins:** If a bin is found to be empty, click the Empty Bin button. This moves all expected inventory for that bin to a suspense location.
+5.  **View Discrepancies:** After scanning, the table will show the found quantity versus the expected, highlighting any excess or suspense (missing) quantity.
+6.  **Submit:** When finished, click Confirm & Submit. The cycle count status becomes “To Be Adjusted”.
+7.  **Supervisor Action:** A supervisor can then view the cycle count and choose to Adjust the inventory accordingly or Reject the count.
+
+**Via HHT:**
+
+1.  **Navigate:** Select Cycle Count from the HHT home screen.
+2.  **Scan Location:** Scan a Location to begin.
+3.  **Scan Bin and Item:** You will be prompted to scan a Bin ID (Pallet), followed by an Item ID.
+4.  **Handle Empty Bins:** If the bin is empty, tap the Empty Bin button. This moves all expected quantity to the suspense bin."
+Simple,How are Sales Orders managed?,"The Sales Order module manages outbound orders, allowing users to create, allocate, and track them manually, via upload, or through integration. It supports B2B, B2C, and Stock Transfer Orders (STO)."
+Simple,What is the purpose of the Manifest module?,The **Manifest Module** allows users to create and manage shipment manifests by manually entering shipment details.
+Simple,What does the Shipping process handle?,"The **Shipping** module handles the final dispatch of shipments, including carrier assignment and label generation."
+Simple-HowTo,How do I create a role?,"Here's how to create a role:
+
+1.  **Navigate to Roles:** Go to the **Admin/Setup** module and select **Roles**.
+2.  **Initiate Role Creation:** Click on **Create Role**.
+3.  **Define Role:** Enter a role name (e.g., ""Packer"") and assign the relevant permissions.
+4.  **Save Role:** Click **Submit** to save the new role."
+Simple-HowTo,How do I configure an automailer?,"Here's how to configure an Automailer:
+
+1.  **Navigate to Automailer:** Go to **Automailer Settings** within the **Admin/Setup** module.
+2.  **Select Trigger:** Find the email trigger you want to configure (e.g., “Storage Inventory With Billing Mailer”) and click the Pencil Icon to edit it.
+3.  **Configure Email:** Add recipient email addresses and a subject line.
+4.  **Activate:** Activate the Automailer and save the settings."
+Simple-HowTo,How do I create an ASN?,"Here's how to create an **Advanced Shipment Notice (ASN)**:
+
+1.  **Access ASN Section:** Navigate to **Inbound > ASN**.
+2.  **Initiate New ASN:** Click the **New ASN** button.
+3.  **Select PO:** From the dropdown list, select the **PO Number** the ASN is linked to.
+4.  **Enter or Upload Details:** You can either fill in all mandatory fields manually or click **Upload**.
+    *   To upload, click **Download** to get the template, fill it with **SKU** numbers and quantities, and upload it back to the system.
+5.  **Confirm ASN:** Click the **Confirm** button to finalize the ASN creation. The system will display a success message."
+Simple-HowTo,How do I record a Gate-In?,"To record a **Gate-In**, follow these steps:
+
+1.  **Access Gate-In:** Navigate to **Inbound > Gate In**.
+2.  **Initiate New Record:** Click the **New Record** button.
+3.  **Enter Details:** Provide the **Vehicle Number**, **Shipper Name**, and the **Number of Units** being transported.
+4.  **Confirm Gate In:** Click **Confirm** to save the record. A success message will be displayed."
+Simple-HowTo,How do I perform a Pallet Putaway on the HHT?,"To perform a Pallet Putaway using the HHT (Handheld Terminal):
+
+1.  **Access Putaway:** On the HHT, select **Putaway**.
+2.  **Scan Pallet:** Scan the **Pallet ID/LPN** to identify the goods.
+3.  **Select Pallet Putaway:** Click on the **Pallet Putaway** button.
+4.  **Scan Location:** Scan the storage **Location Number** where the pallet will be placed and submit.
+5.  **Confirmation:** The system will display a success message confirming completion."
+Simple-HowTo,How do I perform a cycle count on the HHT?,"To perform a cycle count via HHT:
+
+1.  **Navigate:** Select **Cycle Count** from the HHT home screen.
+2.  **Scan Location:** Scan a **Location** to begin.
+3.  **Scan Bin and Item:** You will be prompted to scan a **Bin ID (Pallet)**, followed by an **Item ID**.
+4.  **Handle Empty Bins:** If the bin is empty, tap the **Empty Bin** button. This moves all expected quantity to the suspense bin."
+Simple-HowTo,How do I generate barcodes?,"You can generate barcodes using the **Barcode Module**. Here's how:
+
+1.  **Navigate:** Go to **Tools → Barcode**.
+2.  **Select Code Type:** Choose between **QR Code** (default) or **Barcode**.
+3.  **Select Label Type:** Choose the type of label you need: **Product**, **Other**, or **LMEM**.
+
+    *   **For Product Labels:**
+        *   Select Details: Choose the number of stickers per label, the Product Code, and the EAN.
+        *   Enter Quantity: Input the desired quantity of labels.
+        *   Print: Click the Print button to generate the codes.
+    *   **For Other (Generic) Labels:**
+        *   Select Input Method: Choose between **Form** (to type in codes directly) or **Upload**.
+        *   For Upload: Click Upload, then click Sample Format to download the template. Fill the file with the codes you want to generate and upload it back into the system.
+        *   Print: Click the Print button to generate the codes from your input.
+    *   **For LMEM (Product Information) Labels:**
+        *   Select Product: Choose the Product Code from the dropdown.
+        *   Enter Details: Fill in information such as EAN, MFG Date, Expiry Date, MRP, and Lot Number.
+        *   Enter Quantity: Input the desired number of labels.
+        *   Print: Click the Print button to generate the detailed labels."
+Simple-HowTo,How do I process a sales return?,"Here's how to process a sales return:
+
+1.  **Navigate:** Go to the **Return module** and select **Sales Return**.
+2.  **Create Return:** Click **New Return**.
+3.  **Enter Details:** Enter the original **Order No**, **Awb No**, **Return Type**, and other required information.
+4.  **Add Items:** Scan the **LPN**, **SKU**, and enter the quantity of the returned items. You can also upload items in bulk.
+5.  **Inspect and Update:** Inspect the returned goods and perform a **QC check**.
+6.  **Finalize:** Update the inventory to reflect the return (e.g., moving to an inspection zone) and close the request after resolution. If applicable, generate a **Credit Note** or **Replacement Order**."
+Simple-HowTo,How do I pack an order on the web?,"Here's how to pack an order via the web:
+
+1.  **Navigate to Pack:** Go to **Outbound → Pack**.
+2.  **Start New Pack:** Click the **New Pack** button.
+3.  **Scan Order:** Enter or scan the **Order Number** or **Sort Bin** to fetch order details.
+4.  **Scan Items:** Scan item barcodes to pack them. For bulk items, you can input the quantity.
+5.  **Print Slip & Continue:** After packing a box, click **Print** to generate the **Packing Slip**, which closes the current box and allows you to start the next. You can view pending items by clicking **Pack Pendency**.
+6.  **Close Pack:** Once all items for the order are packed, click **Close**.
+7.  **Enter Shipping Details:** Input the packed box **Weight** and **Dimensions**, and select the **Courier Name**. Enter the **AWB Number** if it's not auto-fetched.
+8.  **Confirm:** Click **Confirm & Submit** to save the packing details."
+Simple-HowTo,How do I create a vendor?,"Here's how to create a vendor:
+
+1.  **Navigate to Vendor Master:** Go to the **Master Module** and open the **Vendor** section.
+2.  **Open New Vendor Form:** Click the **New Vendor** button.
+3.  **Enter Vendor Details:** Fill in the required information, such as **Vendor Name, Contact Information, and Address**.
+4.  **Save Record:** Click the **Save Form** button to save the new vendor. A success notification will be displayed."
+Simple-HowTo,How do I create a custom bin?,"You can create custom bins in the following ways:
+
+### Creating Custom Bins (Individually)
+
+1.  **Navigate to LPN:** Go to **Master > Warehouse > LPN**.
+2.  **Open New Record Form:** Click **New Record**.
+3.  **Enter BIN Details:** Enter the custom BIN code and name.
+4.  **Submit:** Click **Submit** to save the BIN. You can then print the barcode.
+
+### Creating Custom Bins (in Bulk)
+
+1.  **Navigate to LPN:** Go to **Master > Warehouse > LPN**.
+2.  **Download Template:** Click the upload icon and then **Download Format** to get the template.
+3.  **Fill Template:** Enter your custom BIN codes and names into the file.
+4.  **Upload File:** Upload the completed template to create the custom BINs in bulk. You can print the barcodes after the successful upload."
+Simple-HowTo,How do I download a report?,"To download a report, follow these steps:
+
+1.  **Select Location:** Choose the Client Location from the dropdown menu.
+2.  **Select Category:** Click on a report category, such as Inbound, Outbound, Inventory, Performance, or Misc.
+3.  **Select Report:** From the ""Select Report"" dropdown, choose the specific report you need (e.g., Pick Report, Pack Report).
+4.  **Select Date Range:** Choose a time frame for the report.
+5.  **Get Report:** Click the Get Report button to download the file."
+Simple-WhatIs,What is LPN Inventory Management for?,"**LPN Inventory Management** is used for viewing and managing inventory at the individual **License Plate Number (LPN)** level. This is useful for correcting item details like MRP, manufacturing/expiry dates, or lot numbers post-GRN."
+Simple-WhatIs,What is Bin Consolidation?,**Bin Consolidation** is a process used to move inventory between storage locations. This ensures accurate tracking of items and can be performed using either a **Handheld Terminal (HHT)** or the web interface.
+Simple-WhatIs,What is Replenishment?,**Replenishment** is the process of moving inventory from bulk storage locations to forward-picking locations to ensure stock is always available for order fulfillment. It works in two stages: **Setup** and **Execution**.
+Simple-WhatIs,What is the SKU Master?,"The **SKU Master** (Catalogue) is a module that manages product information. It includes details such as:
+
+*   SKU details
+*   Descriptions
+*   Dimensions
+*   Classifications
+
+The **Master Data Management** module is the centralized database where all foundational data for the WMS is created and maintained to ensure consistency across the system. The SKU Master is part of this module."
+Simple-WhatIs,What is the Customer Master?,The **Customer Master** is a centralized module for managing all customer information.
+Simple-WhatIs,What is Picking?,"**Picking** is a crucial process within **Outbound Logistics**. It involves retrieving items from storage locations to fulfill customer orders. The **WMS** generates a **pick list** to guide the process, and it supports various picking methods, such as single order, batch, and zone picking, to optimize accuracy and timeliness."
+Synthesis,Summarize the admin and setup module.,"The **Admin/Setup** module is the foundation of the WMS where administrative configurations are performed.
+
+This module contains the following core processes:
+
+*   **Managing Roles and Users:** Creating user accounts and defining their permissions by assigning roles.
+*   **Configuring the Automailer:** Setting up automatic email notifications for various system events."
+Synthesis,What are all the steps in the inbound process?,"The **Inbound Process** streamlines the receipt and management of incoming goods, from **Purchase Order (PO)** to **Putaway**. The steps are:
+
+*   **Managing Purchase Orders (PO):** Creating and managing orders for goods from vendors.
+*   **Creating an Advanced Shipment Notice (ASN):** Pre-registering details of an incoming shipment.
+*   **Gate-In:** Recording the arrival of a vehicle at the warehouse facility.
+*   **Gate Entry:** Logging the specific shipment details from the vehicle at the entry point.
+*   **Creating a Goods Receipt Note (GRN):** Verifying the quantity and quality of the received items.
+*   **Putaway:** Moving the received goods from the receiving area to their final storage locations."
+Synthesis,What processes are involved in inventory management?,"The Inventory module is the core of WMS operations, used to track, manage, and ensure the accuracy of all stock within the warehouse. This module contains the following core processes:
+
+*   **Full Inventory:** Viewing and downloading a complete report of all stock in the warehouse.
+*   **Bin-Wise Inventory:** Tracking the precise quantity of stock within each specific storage location (bin).
+*   **Cycle Count:** Performing partial, periodic inventory counts to maintain accuracy without a full shutdown.
+*   **LPN Inventory Management:** Managing and editing details of inventory at the pallet or case level (LPN).
+*   **Bin and Item Movement:** Transferring stock between different storage locations within the warehouse.
+*   **Replenishment:** Moving stock from bulk storage areas to forward-picking locations to ensure availability for orders."
+Synthesis,What kind of master data can be managed in the WMS?,"The **Master Data Management** module manages the following master records:
+
+*   Managing **SKUs (Catalogue)**: Creating and managing all product information.
+*   Managing **Vendors**: Maintaining a directory of all supplier information.
+*   Managing **Customers**: Maintaining a directory of all customer information.
+*   Managing **Storage Locations**: Defining the physical layout of the warehouse (zones, aisles, racks).
+*   Managing **Bins / LPNs**: Creating and managing the unique identifiers for storage locations and pallets."
+Synthesis,List all the steps of the outbound process.,"The **Outbound Process** consists of the following sequential steps:
+
+*   **Managing Sales Orders:** Creating and allocating customer orders for fulfillment.
+*   **Picking:** Retrieving the correct items from their storage locations to fulfill orders.
+*   **Packing:** Packing the picked items into boxes and preparing them for shipment.
+*   **Manifesting:** Grouping shipments and assigning them to a specific courier or vehicle.
+*   **Shipping:** Finalizing the dispatch process and handing over the shipment to the carrier."
+Synthesis,What are the different types of returns the WMS can handle?,"The WMS handles returns and exchanges in conjunction with an app called Return Prime. The **Returns Management** module is divided into two main processes:
+
+*   **Sales Order Returns:** Managing goods returned by customers.
+*   **Purchase Order Returns:** Managing goods being returned to vendors."
+Synthesis,What utilities are available in the Tools module?,"The **Tools module** provides several essential utilities for day-to-day warehouse operations. These functions include:
+
+*   **Generating Reports:** Creating and downloading reports on various warehouse activities.
+*   **Managing Approvals:** A centralized dashboard for approving or rejecting system changes, such as LPN detail edits.
+*   **Generating Barcodes and QR Codes:** Printing labels for products and locations.
+*   **Managing Guest Visits (Daily Register):** A log for tracking visitors to the facility."
+Synthesis,How does inventory get updated during the Shopify integration?,"Inventory is updated from the WMS to Shopify through the following methods:
+
+*   **Synced Quantity:** The WMS only posts the ""GOOD QC"", ""Sellable"", and ""Available"" quantity to Shopify. Stock that is damaged or kept as safety stock is not shared.
+*   **Sync Frequency:**
+    *   A complete inventory sync happens twice a day (midnight and noon).
+    *   An update occurs upon each Putaway of new stock into the warehouse.
+    *   An update occurs each time an item is moved between an online zone (like ""Good"" or ""SELLABLE"") and an offline zone (like ""Bad"" or ""QUARANTINE"")."
+Synthesis,What is the complete lifecycle of a sales order from creation to fulfillment?,"The complete lifecycle of a sales order, from creation to fulfillment, is managed within the **Outbound Logistics** module and consists of the following sequential steps:
+
+*   **Managing Sales Orders:** Creating and allocating customer orders for fulfillment.
+*   **Picking:** Retrieving the correct items from their storage locations to fulfill orders.
+*   **Packing:** Packing the picked items into boxes and preparing them for shipment.
+*   **Manifesting:** Grouping shipments and assigning them to a specific courier or vehicle.
+*   **Shipping:** Finalizing the dispatch process and handing over the shipment to the carrier."
+Synthesis,What are the main parts of the WMS?,"The WMS is comprised of two main types of ""parts"":
+
+*   **Modules:** These are the major functional areas of the software. The core modules are:
+    *   Admin and Setup
+    *   Master Data Management
+    *   Inbound Logistics
+    *   Inventory Management
+    *   Outbound Logistics
+    *   Returns Management
+    *   Tools and Utilities
+*   **Processes:** These are the specific operational workflows that happen within the modules. The main end-to-end processes are:
+    *   The Inbound Process (Receiving Goods)
+    *   The Outbound Process (Shipping Orders)"
+Synthesis,How are items tracked from receiving to storage?,"Items are tracked from receiving to storage through the **Putaway** process. This process moves goods from the receiving area to their final storage locations, ensuring efficient storage and accurate inventory management."
+Synthesis,What actions in the WMS require an approval step?,"The **Approvals module** is used for approving or rejecting system changes. This includes actions such as:
+
+*   Approving updates to **LPN** inventory details (like **MRP**, **Lot No.**, **Expiry Date**)
+*   Approving a short dispatch for an order.
+
+The approval detail screen shows the current data alongside the proposed updated data, with buttons to **Approve** or **Decline** the change."
+Synthesis,Describe the different ways to create a Purchase Order.,"You can create a **Purchase Order (PO)** in the following ways:
+
+*   **Manually:**
+    1.  Access the PO Screen: Navigate to **Inbound > Purchase Order**.
+    2.  Initiate New PO: Click the **New PO** button.
+    3.  Enter PO Details: Select the **Vendor Name**, enter the **PO Number**, and select the **Purchase Order Date**.
+    4.  Add Items: You can add items by scanning or uploading a file.
+        *   **Scan Method**: Enter the **Quantity** and select the **SKU**.
+        *   **Upload Method**: Click **Download Format**, fill the template, and upload the file.
+    5.  Confirm and Save: Click **Confirm** to finalize the order. Manual POs can only be edited before they are confirmed.
+*   **Through System Integrations:** The context mentions that POs can be created and managed through system integrations, but does not provide specific steps."
+Synthesis,How does the WMS ensure inventory accuracy?,"The WMS ensures inventory accuracy through several core processes within the **Inventory Management** module:
+
+*   **Full Inventory:** A complete count and verification of all stock in the warehouse.
+*   **Bin-Wise Inventory:** Tracking the precise quantity of stock within each specific storage location (bin).
+*   **Cycle Count:** Performing partial, periodic inventory counts to maintain accuracy without a full shutdown.
+*   **LPN Inventory Management:** Managing and editing details of inventory at the pallet or case level (LPN).
+*   **Bin and Item Movement:** Transferring stock between different storage locations within the warehouse."
+Synthesis,What is the flow of a sales order in the Shopify integration?,"Here's the flow of a sales order within the Shopify integration:
+
+*   **Order Sync:** New orders and cancellations created on Shopify appear immediately in the WMS.
+*   **Fulfillment Status:** Once an order is dispatched from the warehouse, it is marked as ""fulfilled"" in Shopify.
+*   **Delivery Statuses:** Last-mile delivery statuses (e.g., In Transit, Delivered, RTO Delivered) are shared back to Shopify after dispatch."
+Synthesis,How are barcodes used across the WMS?,"Barcodes are used for the following:
+
+*   **Generating Barcodes and QR Codes:** Printing labels for products and locations.
+*   **Printing Barcodes:** After generating a series of bins or creating custom bins, you can print barcodes."
+Synthesis,Explain the different inventory categories in Bin-Wise Inventory view.,"The **Bin-Wise Inventory** view displays inventory details across several categories:
+
+*   **Storage:** Shows inventory at the bin level, including:
+    *   **Total Qty:** Available + Blocked
+    *   **Available Qty:** Ready for orders
+    *   **Block Qty:** Allocated to orders but not yet picked
+*   **Receiving:** Displays quantities processed in a GRN but pending putaway.
+*   **Picked:** Lists quantities picked but not yet shipped, including items in Pick, Pack, and Manifest statuses.
+*   **Kit Picked:** Shows the quantity of items picked specifically for kitting or bundling operations.
+*   **Cancel:** Displays quantities canceled from orders after picking.
+*   **Return:** Shows returned quantities awaiting putaway.
+*   **Missing:** Lists quantities marked as PNA (Product Not Available) during picking. These can be reallocated using the Item Movement feature if found.
+*   **Hold:** Displays quantities specifically held for order allocation. Users can hold entire pallets in bulk or individually to reserve stock for an order."
+Synthesis,What are all the ways to create records in bulk?,"Here are the ways to create records in bulk, according to the provided context:
+
+*   **Creating Custom Bins in Bulk:**
+    1.  Navigate to **LPN**: Go to **Master > Warehouse > LPN**.
+    2.  Download Template: Click the upload icon and then **Download Format** to get the template.
+    3.  Fill Template: Enter your custom BIN codes and names into the file.
+    4.  Upload File: Upload the completed template to create the custom BINs in bulk. You can print the barcodes after the successful upload.
+*   **Creating Storage Locations in Bulk:**
+    1.  Navigate to **Storage Master**: Go to **Master > Warehouse > Storage Master**.
+    2.  Initiate Upload: Click the Download Icon and select **Upload Storage Master**.
+    3.  Download Template: In the pop-up, select the Location and then the type (Zone, Virtual, or Bin). Click **Download Format**.
+    4.  Fill Template: Open the downloaded file and enter mandatory details like Address Code and Inventory Type.
+    5.  Upload File: Save the file and upload it back into the system using the **Choose file** button and clicking **Upload File**.
+    6.  Confirmation: The system will validate the data and show a success notification."
+Synthesis,How is quality control handled during receiving?,"During the **Goods Receipt Note (GRN)** process, a **QC Check** is performed to assess the quality of the received items. The specific steps vary depending on whether you are using an HHT or the Web interface:
+
+*   **HHT:** After scanning the item details, you select the **QC Type**. If the quality is deemed bad, you must select a **Reject Reason**.
+*   **Web:** After entering the item details, you select the **QC Type** for the items."
+Synthesis,"What is the relationship between a PO, an ASN, and a GRN?","The relationship between a **Purchase Order (PO)**, an **Advanced Shipment Notice (ASN)**, and a **Goods Receipt Note (GRN)** is as follows:
+
+*   **Purchase Order (PO):** The PO initiates the procurement process by creating and managing orders for goods from vendors.
+*   **Advanced Shipment Notice (ASN):** The ASN provides early visibility of incoming shipments and is created based on a PO.
+*   **Goods Receipt Note (GRN):** The GRN verifies the quantity and quality of received goods against the PO or ASN."
+Comparative,What is the difference between a sales return and a purchase return?,"The **Return module** in the WMS is divided into two main processes:
+
+*   **Sales Order Returns:** This process manages goods returned by customers.
+*   **Purchase Order Returns:** This process manages items being returned to suppliers due to defects, quality issues, or other reasons."
+Comparative,Compare pallet putaway vs item-wise putaway.,"Here's a comparison of **Pallet Putaway** and **Item-Wise Putaway**:
+
+**Pallet Putaway**
+
+*   **Definition:** The entire pallet is moved to a single storage location.
+*   **Ideal for:** Bulk storage.
+
+**Item-Wise Putaway**
+
+*   **Definition:** Items from a single pallet are stored in different locations.
+*   **Ideal for:** Mixed-SKU pallets."
+Comparative,What is the difference between Gate-In and Gate Entry?,"Here's the difference between **Gate-In** and **Gate Entry**:
+
+*   **Gate-In:** This process records the arrival of vehicles at the warehouse facility. It captures details such as the vehicle number, driver information, and shipment details.
+*   **Gate Entry:** This process tracks the arrival of goods and captures specific shipment details. It involves recording information like the document type, document number, and invoice information."
+Comparative,Contrast creating a user versus creating a role.,"Here's a comparison of creating a user versus creating a role:
+
+### Creating a Role
+
+1.  **Navigate to Roles:** Go to the **Admin/Setup** module and select **Roles**.
+2.  **Initiate Role Creation:** Click on **Create Role**.
+3.  **Define Role:** Enter a role name (e.g., ""Packer"") and assign the relevant permissions.
+4.  **Save Role:** Click **Submit** to save the new role.
+
+### Creating a User
+
+1.  **Navigate to Users:** Go to the **Admin/Setup** module and select **Users**.
+2.  **Initiate User Creation:** Click on **Add User**.
+3.  **Enter User Details:** Provide the user's name, email, and contact number.
+4.  **Assign Role and Credentials:** Assign an appropriate role and set a username and password for the user.
+5.  **Save User:** Click **Submit** to save the new user profile.
+
+**Key Differences:**
+
+*   **Focus:** Creating a role focuses on defining permissions, while creating a user focuses on setting up individual access.
+*   **Details:** Role creation involves naming the role and assigning permissions. User creation involves entering personal details, assigning a role, and setting credentials."
+Comparative,What is the difference between a Bin and an LPN?,"Here's the difference between a **Bin** and an **LPN**:
+
+*   **Bin:** The smallest storage unit in the warehouse. You can generate a series of system-defined bins or create custom ones.
+*   **LPN (License Plate Number):** Used to manage and edit details of inventory at the pallet or case level."
+Comparative,How is creating a sales order different for B2B vs B2C?,"Creating a sales order differs between B2B and B2C in the following ways:
+
+*   **Customer Information:**
+    *   For **B2B** orders, you must select the **Customer Number**.
+    *   For **B2C** orders, you need to fill in the customer details.
+*   **Order Type:** When creating a new order, you must select the appropriate **Order Type** (B2B or B2C)."
+Comparative,Compare a full inventory count to a cycle count.,"Here's a comparison of **Full Inventory** and **Cycle Count** processes:
+
+### Full Inventory
+
+*   **Definition:** A detailed count and verification of all stock in the warehouse.
+*   **Purpose:** To ensure that physical stock matches system records, identify discrepancies, optimize stock levels, and aid in compliance and decision-making.
+*   **Frequency:** Conducted periodically.
+
+### Cycle Count
+
+*   **Definition:** Periodic inventory counts.
+*   **Purpose:** To ensure accuracy without needing a full physical inventory, helping to identify discrepancies and maintain inventory integrity.
+*   **Frequency:** Performed periodically.
+*   **Restrictions:** A cycle count cannot be performed on a location if it has inventory blocked for an order."
+Comparative,What's the difference between the 'Storage' and 'Receiving' categories in Bin-Wise Inventory?,"Here's the difference between the 'Storage' and 'Receiving' categories in **Bin-Wise Inventory**:
+
+*   **Storage:** Displays inventory at the bin level, showing the total quantity (available + blocked), available quantity (ready for orders), and blocked quantity (allocated to orders but not yet picked).
+*   **Receiving:** Shows quantities that have been processed in a **Goods Receipt Note (GRN)** but are pending putaway."
+Comparative,How does creating a single SKU differ from a bulk upload?,"Here's how creating a single SKU differs from a bulk upload:
+
+### Creating a Single SKU
+
+1.  **Navigate to SKU Master:** Go to Master Module > SKU > SKU.
+2.  **Open New SKU Form:** Click on New SKU.
+3.  **Enter SKU Details:** Fill in the required fields like SKU Code, Name, Category, Weight, and Dimensions. You must also check requirements for MFG, Expiry, and Lot numbers.
+4.  **Submit the Form:** Click Next through the stages, and finally Submit to save the SKU. The system will confirm with a success notification.
+
+### Creating SKUs in Bulk
+
+1.  **Select Bulk Upload:** From the SKU Master screen, click the Download Icon, select Upload, and choose between Add or Update mode.
+2.  **Download Template:** Choose the item Category and click Download Format to get the template file.
+3.  **Fill Template:** Enter all required SKU details into the downloaded file.
+4.  **Upload File:** Upload the completed file to create the SKUs in bulk."
+Comparative,Compare the web and HHT methods for GRN.,"Here's a comparison of creating a **Goods Receipt Note (GRN)** via **HHT** and **Web**:
+
+### **GRN Creation via HHT**
+
+1.  **Access GRN:** Navigate to GRN and then Create New GRN on the HHT.
+2.  **Select Gate Entry:** Choose the relevant Gate Entry (GE) Number.
+3.  **Scan IDs:** Scan the Pallet ID (LPN) and then scan the EAN Number for the items.
+4.  **Enter Details:** Input the Quantity and other details like Batch Number or MRP if required.
+5.  **Perform QC Check:** Select the QC Type. If the quality is bad, select a Reject Reason.
+6.  **Complete GRN:** Click Save to record the items, and once all items are processed, click Complete to finalize the GRN.
+
+### **GRN Creation via Web**
+
+1.  **Access GRN:** Navigate to Inbound > GRN > GRN.
+2.  **Initiate New GRN:** Click on New GRN.
+3.  **Select Gate Entry:** Choose the relevant Gate Entry (GE) Number.
+4.  **Scan and Enter Details:** Scan the LPN, then scan the SKU Number and enter the Quantity.
+5.  **Perform QC Check:** Select the QC Type for the items.
+6.  **Confirm GRN:** Click Confirm & Submit to save the GRN details. A success message will appear."
+Comparative,What is the difference between auto and manual replenishment?,"Here's the difference between auto and manual replenishment:
+
+*   **Auto Replenishment:** This is triggered automatically when an order is received, and there is not enough stock in the active picking bin to fulfill it. The required replenishment task will automatically appear in the module.
+*   **Manual Replenishment:** The warehouse team can proactively initiate this by clicking the Run Replenishment button, which checks for any items that have fallen below their minimum threshold."
+Comparative,How is packing on the web different from packing on the HHT?,"Here's a comparison of packing an order via the web versus using the HHT:
+
+### Packing via Web
+
+*   **Navigation:** Go to **Outbound → Pack**.
+*   **Process:**
+    *   Click the **New Pack** button.
+    *   Enter or scan the **Order Number** or **Sort Bin**.
+    *   Scan item barcodes. Input the quantity for bulk items.
+    *   Click **Print** to generate the **Packing Slip** and start the next box.
+    *   Click **Close** when all items are packed.
+    *   Enter **Weight** and **Dimensions**, and select the **Courier Name**.
+    *   Enter the **AWB Number**.
+    *   Click **Confirm & Submit**.
+
+### Packing via HHT
+
+*   **Navigation:** Select the **Pack/Loading Module**.
+*   **Process:**
+    *   Scan the **Order Number**.
+    *   Scan the **EAN** or **Master Carton** code for each item.
+    *   Click **Close Box** if a box is full.
+    *   Click the final **Close Pack** button.
+    *   Enter the package **Weight**, **Dimensions**, select the **Courier**, and input the **AWB** and **Invoice Number**.
+    *   Click **Confirm**."
+Comparative,Compare generating product barcodes vs other barcodes.,"Here's a comparison of generating product barcodes versus other barcodes, based on the provided context:
+
+### Generating Barcodes
+
+The **Barcode Module** allows users to print barcode or QR code labels for items. This is essential for labeling products or other inventory items efficiently.
+
+### Label Types
+
+The system supports printing for the following label types:
+
+*   **Product**
+*   **Other**
+*   **LMEM**
+
+### Printing Labels
+
+Here's how to print labels:
+
+1.  **Navigate:** Go to **Tools → Barcode**.
+2.  **Select Code Type:** Choose between **QR Code** (default) or **Barcode**.
+3.  **Select Label Type:** Choose the type of label you need: **Product**, **Other**, or **LMEM**.
+
+### Product Labels
+
+*   **Select Details:** Choose the number of stickers per label, the **Product Code**, and the **EAN**.
+*   **Enter Quantity:** Input the desired quantity of labels.
+*   **Print:** Click the **Print** button to generate the codes.
+
+### Other (Generic) Labels
+
+This option is used to generate barcodes for non-product items.
+
+*   **Select Input Method:** Choose between **Form** (to type in codes directly) or **Upload**.
+    *   **For Upload:** Click **Upload**, then click **Sample Format** to download the template. Fill the file with the codes you want to generate and upload it back into the system.
+*   **Print:** Click the **Print** button to generate the codes from your input.
+
+### LMEM (Product Information) Labels
+
+*   **Module:** Tools and Utilities
+    *   The **Tools** module provides various essential utilities for day-to-day warehouse operations.
+    *   This module contains the following functions:
+        *   Generating Reports: Creating and downloading reports on various warehouse activities.
+        *   Managing Approvals: A centralized dashboard for approving or rejecting system changes, such as LPN detail edits.
+        *   Generating Barcodes and QR Codes: Printing labels for products and locations.
+        *   Managing Guest Visits (Daily Register): A log for tracking visitors to the facility."
+Comparative,What is the difference between a Bin and a Storage Location?,"Here's the difference between a **Bin** and a **Storage Location**:
+
+*   **Bin:** The smallest storage unit in the warehouse. You can generate system-defined bins or create custom ones.
+*   **Storage Location:** Defines and manages physical storage areas like zones, aisles, racks, or bins."
+Follow-up,I have created a purchase order. What is the next step in the inbound process?,"Following the creation of a **Purchase Order (PO)**, the next steps in the **Inbound Process** are:
+
+*   Creating an **Advanced Shipment Notice (ASN)**: Pre-registering details of an incoming shipment.
+*   **Gate-In**: Recording the arrival of a vehicle at the warehouse facility.
+*   **Gate Entry**: Logging the specific shipment details from the vehicle at the entry point.
+*   Creating a **Goods Receipt Note (GRN)**: Verifying the quantity and quality of the received items.
+*   **Putaway**: Moving the received goods from the receiving area to their final storage locations."
+Follow-up,The vehicle has arrived at the facility. What should I do now?,"You should now perform the **Gate-In** process. This involves recording the entry of the vehicle into the facility, capturing details such as the vehicle number, driver information, and shipment details.
+
+Here's how to record a Gate-In:
+
+1.  **Access Gate-In:** Navigate to **Inbound > Gate In**.
+2.  **Initiate New Record:** Click the **New Record** button.
+3.  **Enter Details:** Provide the **Vehicle Number**, **Shipper Name**, and the **Number of Units** being transported.
+4.  **Confirm Gate In:** Click **Confirm** to save the record. A success message will be displayed."
+Follow-up,The goods have been verified with a GRN. What's next?,"After the goods have been verified with a **Goods Receipt Note (GRN)**, the next step in the **Inbound Logistics** process is **Putaway**. This involves moving the received goods from the receiving area to their final storage locations."
+Follow-up,I have picked all the items for an order. What is the next process?,"After picking all the items for an order, the next process is **Packing**."
+Follow-up,The order is packed and the AWB is assigned. What is the final step?,The final step is to confirm and submit the packing details.
+Follow-up,I just created a new SKU in the master data. How can I order it from a vendor?,"To order the new SKU from a vendor, you'll need to create a **Purchase Order (PO)**. Here's how to do it manually:
+
+1.  **Access PO Screen:** Navigate to **Inbound > Purchase Order**.
+2.  **Initiate New PO:** Click the **New PO** button.
+3.  **Enter PO Details:** Select the **Vendor Name**, enter the **PO Number**, and select the **Purchase Order Date**.
+4.  **Add Items:** You can add items by scanning or uploading a file.
+    *   **Scan Method:** Enter the **Quantity** and select the **SKU**.
+    *   **Upload Method:** Click **Download Format**, fill the template, and upload the file.
+5.  **Confirm and Save:** Click **Confirm** to finalize the order. Manual POs can only be edited before they are confirmed."
+Follow-up,My cycle count shows a discrepancy. What happens now?,"If a cycle count reveals a discrepancy, here's what happens:
+
+1.  **View Discrepancies:** The system will show the found quantity versus the expected quantity, highlighting any excess or missing inventory.
+2.  **Submit:** Once the scanning is complete, you click **Confirm & Submit**. The cycle count status then becomes ""To Be Adjusted"".
+3.  **Supervisor Action:** A supervisor can then view the cycle count and choose to either **Adjust** the inventory accordingly or **Reject** the count."
+Follow-up,I've closed the box during packing. What do I do for the remaining items?,"If a box is full during packing, click **Close Box**. The system will then generate a new **Box ID** for the subsequent items."
+Follow-up,I just received a sales return. Where does the inventory show up?,The returned quantities will be displayed in the **Return** category within the **Bin-Wise Inventory** view. This category shows returned quantities that have been received but are awaiting putaway.
+Edge Case,Can I change a PO after it has been confirmed?,Manual **Purchase Orders (POs)** can only be edited before they are confirmed.
+Edge Case,What happens if an item is not found during picking?,"If an item is not found during picking, the user should handle the exception by tapping the **PNA (Product Not Available)** button and submitting the reason. The **Bin-Wise Inventory** feature will then list these items under the **Missing** category. If the items are later found, they can be reallocated using the **Item Movement** feature."
+Edge Case,Can I perform a cycle count on a bin with a blocked item?,"No, a cycle count cannot be performed on a location if it has inventory blocked for an order."
+Edge Case,How often does inventory sync with Shopify?,"Inventory is updated from the WMS to Shopify at regular intervals.
+
+*   A complete inventory sync happens twice a day (midnight and noon).
+*   An update occurs upon each Putaway of new stock into the warehouse.
+*   An update occurs each time an item is moved between an online zone (like ""Good"" or ""SELLABLE"") and an offline zone (like ""Bad"" or ""QUARANTINE"")."
+Edge Case,What if I find an item that was marked as Missing/PNA?,"If an item was marked as **PNA (Product Not Available)** during picking and is later found, it can be reallocated using the **Item Movement** feature."
+Edge Case,What happens if I reject an LPN detail change in the approval module?,"If you reject an LPN detail change in the **Approvals** module, the original details of the LPN are retained."
+Edge Case,Does the WMS handle last-mile delivery?,"Yes, the WMS shares last-mile delivery statuses (like In Transit, Delivered, RTO Delivered) back to Shopify after dispatch."
+Edge Case,What if I need to print a label for an item not in the catalogue?,"If you need to print a label for an item not in the catalog, you can use the ""Other"" (Generic) Labels option. Here's how:
+
+1.  **Navigate:** Go to **Tools → Barcode**.
+2.  **Select Code Type:** Choose between **QR Code** (default) or **Barcode**.
+3.  **Select Label Type:** Choose **Other**.
+4.  **Select Input Method:** Choose between **Form** (to type in codes directly) or **Upload**.
+    *   **For Upload:** Click **Upload**, then click **Sample Format** to download the template. Fill the file with the codes you want to generate and upload it back into the system.
+5.  **Print:** Click the **Print** button to generate the codes from your input."
+Vague,what about setup?,"The **Admin/Setup** module is the foundation of the WMS where administrative configurations are performed. This includes managing user roles, system users, and automated email notifications (Automailer)."
+Vague,how do returns work?,"The **Returns Management** module handles all processes related to goods being returned to the warehouse. This module is divided into two main processes:
+
+*   **Sales Order Returns:** Managing goods returned by customers.
+*   **Purchase Order Returns:** Managing goods being returned to vendors.
+
+Here's how to process a **Sales Return**:
+
+1.  **Navigate:** Go to the **Return** module and select **Sales Return**.
+2.  **Create Return:** Click **New Return**.
+3.  **Enter Details:** Enter the original Order No, Awb No, Return Type, and other required information.
+4.  **Add Items:** Scan the LPN, SKU, and enter the quantity of the returned items. You can also upload items in bulk.
+5.  **Inspect and Update:** Inspect the returned goods and perform a QC check.
+6.  **Finalize:** Update the inventory to reflect the return (e.g., moving to an inspection zone) and close the request after resolution. If applicable, generate a Credit Note or Replacement Order."
+Vague,tell me about orders,"The WMS manages orders through two primary processes:
+
+*   **The Inbound Process:** This process begins with a **Purchase Order (PO)** to a vendor and ends with the goods being stored in their final warehouse location (**Putaway**).
+*   **The Outbound Process:** This process starts with a customer's **Sales Order** and concludes with the packed goods being shipped out of the warehouse."
+Vague,what happens at the gate?,"The **Inbound Logistics** process includes two gate-related steps:
+
+*   **Gate-In:** This step records the arrival of a vehicle at the warehouse facility.
+*   **Gate Entry:** This step involves logging the specific shipment details from the vehicle at the entry point."
+Vague,how does inventory move?,"Inventory movement can be performed in two ways:
+
+**1. Bin Movement:** This involves transferring inventory between storage locations.
+
+*   **Via HHT (Bin Consolidation):**
+    *   Navigate to Bin Consolidation from the HHT home screen.
+    *   Scan the From Bin (source) and To Bin (target) locations.
+    *   Scan the item. For a single item, click Submit. For multiple items, toggle the Bulk option, enter the quantity, and then submit.
+*   **Via Web:**
+    *   Navigate to Inventory → BIN Movement → Item Movement.
+    *   **Single Movement:**
+        *   Click New Movement.
+        *   Select the SKU Number, the From LPN, and the To LPN.
+        *   Enter the Quantity and click Confirm & Submit.
+    *   **Bulk Movement via Upload:**
+        *   Click the Upload button on the Item Movement page.
+        *   Click Download Format to get the template.
+        *   Fill the template with the SKU, From LPN, To LPN, and Quantity for each movement.
+        *   Upload the completed file and click Upload File to finalize.
+
+**2. Manual Replenishment:** The warehouse team can proactively initiate this by clicking the Run Replenishment button, which checks for any items that have fallen below their minimum threshold. For both methods, the user clicks Export to get a printable list of replenishment tasks. The physical stock movement is then performed similarly to a standard item movement."
+Vague,explain the approval process,"The **Approvals module** provides a centralized dashboard for reviewing and approving or rejecting changes requested within the WMS. This module is used for actions such as approving updates to LPN inventory details or approving a short dispatch for an order. The approval detail screen shows the current data alongside the proposed updated data, with buttons to **Approve** or **Decline** the change."

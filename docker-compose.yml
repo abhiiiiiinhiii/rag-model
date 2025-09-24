@@ -1,0 +1,41 @@
+
+services:
+  chatbot:
+    # Use the image named 'wms-chatbot' and build it from the current directory if it doesn't exist
+    image: wms-chatbot
+    build: .
+    
+    # Name the running container
+    container_name: wms-chatbot-container
+    
+    # Always restart the container if it stops
+    restart: always
+    
+    # Forward port 8000 from your computer to the container
+    ports:
+      - "8000:8000"
+      
+    # Use the docker.env file for environment variables
+    env_file:
+      - docker.env
+
+    environment:
+      - REDIS_URL=redis://redis:6379
+      
+    # Mount the volumes using relative paths, which Compose handles reliably
+    volumes:
+      - ./chroma_db_wms:/app/chroma_db_wms
+      - ./chroma_db_wms_faq:/app/chroma_db_wms_faq
+      - ./chat_history.csv:/app/chat_history.csv
+      - ./huggingface_cache:/root/.cache/huggingface
+      - ./redis_data:/data
+    depends_on:
+      - redis
+
+  # This is the new Redis service
+  redis:
+    image: "redis:alpine"
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"

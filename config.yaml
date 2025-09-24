@@ -1,0 +1,17 @@
+# config.yaml
+
+tier_keys:
+  google:
+    free: "AIzaSyAsTHBDQ1Sr-3cWdhUMvUNflquRnH0dRls"
+    paid: "AIzaSyAsTHBDQ1Sr-3cWdhUMvUNflquRnH0dRls"
+
+clients:
+  modicare:
+    name: "modicare"
+    tier: "paid"
+    service: "google"
+
+  oriflame:
+    name: "modicare"
+    tier: "free"
+    service: "google"

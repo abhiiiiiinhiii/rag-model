@@ -1,0 +1,9 @@
+env
+# Python virtual environment folder
+venv/
+
+# Hugging Face cache directory
+huggingface_cache/
+
+# Environment variables file
+.env

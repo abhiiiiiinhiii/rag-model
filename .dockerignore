@@ -1,0 +1,22 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+
+# Git folder
+.git/
+
+# Local data and logs (we will mount these as volumes instead)
+chroma_db_wms/
+chroma_db_wms_faq/
+chat_history.csv
+huggingface_cache/
+# Docker files
+Dockerfile
+.dockerignore
