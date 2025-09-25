@@ -1,9 +1,22 @@
-env
-# Python virtual environment folder
 venv/
+.venv/
 
-# Hugging Face cache directory
-huggingface_cache/
+# Python cache files
+__pycache__/
+*.pyc
 
-# Environment variables file
+# Secrets - NEVER commit these
 .env
+docker.env
+
+# Runtime Data, Logs, and Caches
+chroma_db_wms/
+chroma_db_wms_faq/
+huggingface_cache/
+redis_data/
+chat_history.csv
+
+# OS / IDE specific files (Good practice)
+.vscode/
+.idea/
+desktop.ini
