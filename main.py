@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from typing import Union, Dict, AsyncGenerator
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.responses import StreamingResponse
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from rag_pipeline import WMSChatbot
@@ -28,6 +28,7 @@ load_dotenv()
 
 # --- App Initialization ---
 app = FastAPI(title="WMS Multi-Tenant Chatbot API")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/resources", StaticFiles(directory="resources"), name="resources")
 
 print("Initializing embedding model and WMSChatbot instance...")
@@ -47,10 +48,11 @@ print("Startup complete. Chatbot is ready.")
 @app.on_event("startup")
 async def startup_event():
     print("FastAPI application startup ready.")
+wms_domain = "https://uatreham.holisollogistics.com" 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "null"],
+    allow_origins=[wms_domain],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -74,10 +76,10 @@ def log_conversation(client_id: str, query: str, answer: str):
     except Exception as e:
         logging.error(f"Failed to log conversation: {e}")
 
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def read_root():
-    with open("index.html") as f:
-        return HTMLResponse(content=f.read(), status_code=200)
+# @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+# async def read_root():
+#     with open("index.html") as f:
+#         return HTMLResponse(content=f.read(), status_code=200)
     
 # --- Pydantic Models ---
 class ChatRequest(BaseModel):
@@ -102,7 +104,6 @@ class ErrorAnalysisRequest(BaseModel):
 class IngestFAQRequest(BaseModel):
     faq_directory: str
 
-# --- API Endpoints ---
 @app.post("/chat", summary="Chat with bot")
 async def chat_with_bot(req: ChatRequest):
     client_id = req.client_id
