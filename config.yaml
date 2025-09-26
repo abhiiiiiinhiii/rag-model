@@ -2,8 +2,8 @@
 
 tier_keys:
   google:
-    free: "AIzaSyAsTHBDQ1Sr-3cWdhUMvUNflquRnH0dRls"
-    paid: "AIzaSyAsTHBDQ1Sr-3cWdhUMvUNflquRnH0dRls"
+    free: ""
+    paid: ""
 
 clients:
   modicare:
