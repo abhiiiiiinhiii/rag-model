@@ -48,11 +48,14 @@ print("Startup complete. Chatbot is ready.")
 @app.on_event("startup")
 async def startup_event():
     print("FastAPI application startup ready.")
-wms_domain = "https://uatreham.holisollogistics.com" 
 
+wms_origins = [
+    "https://uatreham.holisollogistics.com",  # For the final WMS integration
+    "http://localhost:8001"         # For your local Python server test
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[wms_domain],
+    allow_origins=wms_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

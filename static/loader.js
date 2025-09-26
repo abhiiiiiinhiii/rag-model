@@ -1,5 +1,5 @@
 // static/loader.js - v2 (Complete and Self-Contained)
-
+const CHATBOT_SERVER_URL = 'http://15.207.221.105:8000';
 const widgetHTML = `
     <div id="chat-toggle-button">
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
@@ -11,7 +11,7 @@ const widgetHTML = `
     <div id="chat-widget">
         <div class="widget-header">
             <div class="logo">
-                <img src="/resources/download.png" alt="logo" style="height: 22px; width: 95px; " />
+                <img src="${CHATBOT_SERVER_URL}/resources/download.png" alt="logo" style="height: 22px; width: 95px; " />
             </div>
            <div class="icon-buttons">
                 <svg id="new-chat-button" class="icon-button" width="24" height="24" viewBox="0 0 36 36" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -226,7 +226,7 @@ const widgetCSS = `
         };
 
         // --- Config ---
-        const API_URL = '';
+        const API_URL = CHATBOT_SERVER_URL;
         const WMS_API_BASE_URL = 'http://api.your-wms.com';
         let sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const CLIENT_ID = "modicare";
