@@ -51,7 +51,8 @@ async def startup_event():
 
 wms_origins = [
     "https://uatreham.holisollogistics.com",  # For the final WMS integration
-    "http://localhost:8001"         # For your local Python server test
+    "http://localhost:8001"
+    "http://spicewms.test"                  # For your local Python server test
 ]
 app.add_middleware(
     CORSMiddleware,
