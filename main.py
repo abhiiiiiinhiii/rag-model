@@ -13,15 +13,29 @@ from fastapi.responses import StreamingResponse
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from rag_pipeline import WMSChatbot
 import yaml
+# Load client configurations from YAML
 try:
     with open("config.yaml", 'r') as f:
         config = yaml.safe_load(f)
-    TIER_KEYS = config.get('tier_keys', {})
     CLIENT_CONFIG = config.get('clients', {})
 except FileNotFoundError:
     print("Error: config.yaml not found. Please ensure it exists.")
-    TIER_KEYS = {}
     CLIENT_CONFIG = {}
+
+# Securely load tier keys from environment variables
+free_key = os.getenv("GOOGLE_API_KEY_FREE")
+paid_key = os.getenv("GOOGLE_API_KEY_PAID")
+
+if not free_key or not paid_key:
+    print("Warning: GOOGLE_API_KEY_FREE or GOOGLE_API_KEY_PAID not found in environment variables.")
+    TIER_KEYS = {}
+else:
+    TIER_KEYS = {
+        "google": {
+            "free": free_key,
+            "paid": paid_key
+        }
+    }
 
 # Load environment variables from your .env file
 load_dotenv()
