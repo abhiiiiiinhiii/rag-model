@@ -82,7 +82,7 @@ const widgetCSS = `
     .widget-header .icon-buttons { display: flex; align-items: center; gap: 12px; }
     .widget-header .icon-button { color: #6b7280; cursor: pointer; transition: color 0.2s; }
     .widget-header .icon-button:hover { color: #333; }
-    .chat-view-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; border-radius: 0 0 12px 12px; background-color: #f7f9fc; }
+    .chat-view-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; border-radius: 0 0 12px 12px; background-color: #fff; }
     #chat-view { overflow: hidden; flex-grow: 1; display: flex; flex-direction: column; }
     .chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; background-color: #fdfdfd; height: 0; display: none; }
     .chat-box.active { display: block; }
