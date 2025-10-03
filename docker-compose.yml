@@ -17,7 +17,7 @@ services:
       
     # Use the docker.env file for environment variables
     env_file:
-      - docker.env
+      - .env
 
     environment:
       - REDIS_URL=redis://redis:6379
