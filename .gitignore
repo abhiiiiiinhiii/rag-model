@@ -15,6 +15,7 @@ chroma_db_wms_faq/
 huggingface_cache/
 redis_data/
 chat_history.csv
+activity_log.csv
 
 # OS / IDE specific files (Good practice)
 .vscode/
