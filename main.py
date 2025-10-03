@@ -17,6 +17,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from rag_pipeline import WMSChatbot
+from user_db import users_db, pwd_context
 
 # Load environment variables from your .env file
 load_dotenv()
@@ -24,16 +25,10 @@ load_dotenv()
 # --- Security and Authentication Setup ---
 SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_for_dev_only")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 600
 
-# In a real app, this would be a proper user database.
-mock_users_db = {
-    "admin": {"username": "admin", "full_name": "Admin User", "role": "Administrator", "hashed_password": "$2b$12$EixZaYVK1e.AS8ALsT6M0.j4c68oOF9M95P./5wCIirl.pIQ5sN5y"},
-    "editor": {"username": "editor", "full_name": "Editor User", "role": "Editor", "hashed_password": "$2b$12$gT9vX6Ew2xR.B.t6E8wSHe0v.e2d.LgAX2wU4l.A3gI7sB3tZ9t/m"},
-    "viewer": {"username": "viewer", "full_name": "Viewer User", "role": "Viewer", "hashed_password": "$2b$12$Z.o.2.i.fJ9uU7oX3.4j.eX2xK/3y.A6V8nL0lZ5gU9v.3qH8nL/m"},
-}
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # --- Configuration Loading ---
@@ -200,7 +195,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = get_user(mock_users_db, username)
+    user = get_user(users_db, username)
     if user is None:
         raise credentials_exception
     return User(**user)
@@ -310,7 +305,7 @@ async def ingest_faqs(req: IngestFAQRequest):
 # --- Auth Endpoints ---
 @app.post("/token", response_model=Token, tags=["Auth"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = get_user(mock_users_db, form_data.username)
+    user = get_user(users_db, form_data.username)
     if not user or not pwd_context.verify(form_data.password, user['hashed_password']):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
