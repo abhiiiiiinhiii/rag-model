@@ -14,6 +14,11 @@ const widgetHTML = `
                 <img src="${CHATBOT_SERVER_URL}/resources/download.png" alt="logo" style="height: 22px; width: 95px; " />
             </div>
            <div class="icon-buttons">
+                <svg id="history-button" class="icon-button" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <title>History</title>
+                    <path d="M12 8v4l3 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z" stroke-width="2"></path>
+                </svg>
                 <svg id="new-chat-button" class="icon-button" width="24" height="24" viewBox="0 0 36 36" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <title>New-Chat</title>
                     <path d="M28,30H6V8H19.22l2-2H6A2,2,0,0,0,4,8V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V15l-2,2Z"></path>
@@ -50,6 +55,21 @@ const widgetHTML = `
                             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                         </svg>
                     </button>
+                </div>
+            </div>
+
+            <div id="history-view">
+                <div class="history-header">
+                    <svg id="back-to-chat-button" class="icon-button" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <title>Back</title>
+                        <path d="M19 12H5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M12 19L5 12L12 5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                    <h3>Chat History</h3>
+                </div>
+                <ul id="history-list"></ul>
+                <div id="load-more-container" style="padding: 15px; text-align: center; display: none;">
+                    <button id="load-more-button">Load More</button>
                 </div>
             </div>
         </div>
@@ -145,6 +165,42 @@ const widgetCSS = `
     .suggestion-message { justify-content: flex-end; }
     .suggestion-bubble { background-color: #ffffff; color: #007BFF; border: 1px solid #007BFF; border-bottom-right-radius: 4px; cursor: pointer; transition: background-color 0.2s ease-in-out; font-size: 10px; padding: 10px 10px; margin-bottom: -10px; }
     .suggestion-bubble:hover { background-color: #007bff97; color: white; }
+    #history-view {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: #fff; z-index: 10;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+}
+#history-view.open { transform: translateX(0); }
+.history-header {
+    display: flex; align-items: center; padding: 12px 20px;
+    border-bottom: 1px solid #e9ecef; flex-shrink: 0;
+}
+.history-header h3 { margin: 0; margin-left: 16px; font-size: 16px; font-weight: 600; }
+#history-list {
+    list-style: none; margin: 0; padding: 8px; flex-grow: 1; overflow-y: auto;
+}
+.history-item {
+    padding: 12px 16px; border-bottom: 1px solid #f1f3f5; cursor: pointer;
+    transition: background-color 0.2s;
+}
+.history-item:hover { background-color: #f8f9fa; }
+.history-item-title {
+    font-size: 14px; font-weight: 500; color: #333;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.history-item-date { font-size: 11px; color: #6b7280; margin-top: 4px; }
+.history-item-none {
+    text-align: center; color: #999; padding: 20px; font-size: 14px;
+}
+#load-more-button {
+    padding: 8px 20px; border: 1px solid #007BFF;
+    background-color: #fff; color: #007BFF;
+    border-radius: 20px; cursor: pointer; font-weight: 600;
+    transition: background-color 0.2s, color 0.2s;
+}
+#load-more-button:hover { background-color: #e6f2ff; }
 `;
 
 // --- INJECTION AND APPLICATION LOGIC ---
@@ -214,6 +270,12 @@ const widgetCSS = `
         const pillsContainer = welcomeView.querySelector('.pills-container');
         const questionPanelsContainer = welcomeView.querySelector('.questions-panels-container');
         const askedQuestions = new Set();
+        const historyButton = shadowRoot.querySelector('#history-button');
+        const historyView = shadowRoot.querySelector('#history-view');
+        const backToChatButton = shadowRoot.querySelector('#back-to-chat-button');
+        const historyList = shadowRoot.querySelector('#history-list');
+        const loadMoreContainer = shadowRoot.querySelector('#load-more-container');
+        const loadMoreButton = shadowRoot.querySelector('#load-more-button');
 
         // --- Pill Dropdown Data ---
         const categories = {
@@ -228,7 +290,10 @@ const widgetCSS = `
         // --- Config ---
         const API_URL = CHATBOT_SERVER_URL;
         const WMS_API_BASE_URL = 'http://api.your-wms.com';
+        const userId = 'holisol_internal_user_01'; // Hardcoded user ID for now
+        let historyPage = 1; // For pagination
         let sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        let currentMessages = [];
         const CLIENT_ID = "modicare";
 
         // --- Widget Visibility ---
@@ -242,6 +307,81 @@ const widgetCSS = `
                 setTimeout(() => {
                     toggleButton.style.display = 'flex';
                 }, 300);
+            }
+        };
+        const fetchAndRenderHistory = async (page = 1) => {
+            if (page === 1) {
+                historyList.innerHTML = ''; // Clear list only when loading the first page
+            }
+            loadMoreButton.disabled = true;
+            loadMoreButton.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`${API_URL}/history/user/${userId}?page=${page}&size=5`);
+                if (!response.ok) throw new Error('Failed to fetch history');
+                
+                const data = await response.json();
+
+                if (data.chats.length === 0 && page === 1) {
+                    historyList.innerHTML = '<li class="history-item-none">No chat history found.</li>';
+                }
+
+                data.chats.forEach(chat => {
+                    const item = document.createElement('li');
+                    item.className = 'history-item';
+                    item.dataset.sessionId = chat.session_id;
+                    item.innerHTML = `
+                        <div class="history-item-title">${chat.title}</div>
+                        <div class="history-item-date">${new Date(chat.timestamp).toLocaleString()}</div>
+                    `;
+                    historyList.appendChild(item);
+                });
+
+                if (data.has_more) {
+                    loadMoreContainer.style.display = 'block';
+                } else {
+                    loadMoreContainer.style.display = 'none';
+                }
+            } catch (e) {
+                console.error("Failed to fetch or render chat history:", e);
+                historyList.innerHTML = '<li class="history-item-none">Error loading history.</li>';
+            } finally {
+                loadMoreButton.disabled = false;
+                loadMoreButton.textContent = 'Load More';
+            }
+        };
+
+        const loadConversation = async (id) => {
+            try {
+                const response = await fetch(`${API_URL}/history/${id}`);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch chat history from server.");
+                }
+                const data = await response.json();
+                
+                if (!data || !data.messages) {
+                    throw new Error("Conversation not found or is empty.");
+                }
+
+                sessionId = id;
+                currentMessages = data.messages;
+
+                chatBox.innerHTML = '';
+                welcomeView.style.display = 'none';
+                chatBox.classList.add('active');
+                
+                currentMessages.forEach(msg => {
+                    const messageWrapper = appendMessage(msg.sender, msg.text, msg.type, false);
+                    if (msg.sender === 'bot') {
+                        const copyBtn = messageWrapper.querySelector('.copy-btn');
+                        if (copyBtn) copyBtn.style.display = 'flex';
+                    }
+                });
+
+                historyView.classList.remove('open');
+            } catch (e) {
+                console.error("Failed to load conversation:", e);
+                Toastify({ text: e.message || "Error loading history.", duration: 3000, gravity: "bottom", position: "right", backgroundColor: "#dc3545" }).showToast();
             }
         };
 
@@ -268,7 +408,7 @@ const widgetCSS = `
                 const response = await fetch(`${API_URL}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, session_id: sessionId, client_id: CLIENT_ID })
+                    body: JSON.stringify({ query, session_id: sessionId, client_id: CLIENT_ID, user_id: userId })
                 });
                 if (!response.ok) throw new Error((await response.json()).detail || 'An error occurred');
                 const reader = response.body.getReader();
@@ -295,7 +435,14 @@ const widgetCSS = `
                     }
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
-                if (fullResponse.trim() !== "" && copyBtn) { copyBtn.style.display = 'flex'; }
+                if (fullResponse.trim() !== "" && copyBtn) { 
+                    copyBtn.style.display = 'flex';
+                    const lastMessage = currentMessages[currentMessages.length - 1];
+                    if (lastMessage && lastMessage.sender === 'bot') {
+                        lastMessage.text = fullResponse;
+                        lastMessage.type = 'text';
+                    }
+                }
             } catch (error) {
                 botBubble.classList.remove('loading');
                 botBubble.classList.add('error');
@@ -308,7 +455,10 @@ const widgetCSS = `
             }
         };
 
-        const appendMessage = (sender, text, type = 'text') => {
+        const appendMessage = (sender, text, type = 'text', shouldSave = true) => {
+            if (shouldSave) {
+                currentMessages.push({ sender, text, type });
+            }
             const messageWrapper = document.createElement('div');
             messageWrapper.className = `chat-message ${sender}-message`;
             const bubble = document.createElement('div');
@@ -343,7 +493,10 @@ const widgetCSS = `
         };
         
         const startNewConversation = () => {
+            historyView.classList.remove('open');
             sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            currentMessages = [];
+            
             welcomeView.classList.remove('pills-stacked');
             shadowRoot.querySelectorAll('.category-pill.active, .questions-panel.active').forEach(el => el.classList.remove('active'));
             setTimeout(() => {
@@ -488,29 +641,49 @@ const widgetCSS = `
             if (questionBtn) sendMessage(questionBtn.dataset.prompt);
         });
         chatWidget.addEventListener('click', (e) => {
-             const suggestionBtn = e.target.closest('.suggestion-bubble');
-             const copyButton = e.target.closest('.copy-btn');
-             if (suggestionBtn) {
-                 sendMessage(suggestionBtn.dataset.prompt);
-                 const groupId = suggestionBtn.dataset.groupId;
-                 if (groupId) {
-                     shadowRoot.querySelectorAll(`.suggestion-bubble[data-group-id="${groupId}"]`).forEach(btn => btn.closest('.suggestion-message').remove());
-                 }
-                 return;
-             }
-             if (copyButton) {
-                 const contentToCopy = copyButton.closest('.message-bubble').querySelector('.message-content');
-                 if (contentToCopy) {
-                     navigator.clipboard.writeText(contentToCopy.innerText).then(() => {
-                         copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                         copyButton.title = 'Copied!';
-                         setTimeout(() => {
+            const historyItem = e.target.closest('.history-item');
+            if (historyItem && historyItem.dataset.sessionId) {
+                loadConversation(historyItem.dataset.sessionId);
+                return;
+            }
+            const suggestionBtn = e.target.closest('.suggestion-bubble');
+            const copyButton = e.target.closest('.copy-btn');
+            if (suggestionBtn) {
+                sendMessage(suggestionBtn.dataset.prompt);
+                const groupId = suggestionBtn.dataset.groupId;
+                if (groupId) {
+                    shadowRoot.querySelectorAll(`.suggestion-bubble[data-group-id="${groupId}"]`).forEach(btn => btn.closest('.suggestion-message').remove());
+                }
+                return;
+            }
+            if (copyButton) {
+                const contentToCopy = copyButton.closest('.message-bubble').querySelector('.message-content');
+                if (contentToCopy) {
+                    navigator.clipboard.writeText(contentToCopy.innerText).then(() => {
+                        copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                        copyButton.title = 'Copied!';
+                        setTimeout(() => {
                             copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
                             copyButton.title = 'Copy text';
-                         }, 2000);
-                     });
-                 }
-             }
+                        }, 2000);
+                    });
+                }
+            }
+        });
+
+        historyButton.addEventListener('click', () => {
+            historyPage = 1;
+            fetchAndRenderHistory(historyPage);
+            historyView.classList.add('open');
+        });
+
+        backToChatButton.addEventListener('click', () => {
+            historyView.classList.remove('open');
+        });
+
+        loadMoreButton.addEventListener('click', () => {
+            historyPage++;
+            fetchAndRenderHistory(historyPage);
         });
         
         // Proactive Network Error Listener

@@ -2,6 +2,7 @@ import os
 import csv
 import logging
 import pandas as pd
+import redis
 import yaml
 from datetime import datetime
 from typing import Union, Dict, AsyncGenerator, List, Optional
@@ -18,7 +19,7 @@ from passlib.context import CryptContext
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from rag_pipeline import WMSChatbot
 from user_db import users_db, pwd_context
-
+from langchain_core.messages import BaseMessage
 # Load environment variables from your .env file
 load_dotenv()
 
@@ -124,6 +125,7 @@ class ChatRequest(BaseModel):
     query: str
     session_id: str
     client_id: str
+    user_id: str
 
 class ChatResponse(BaseModel):
     answer: str
@@ -172,6 +174,21 @@ class KBDocumentContent(BaseModel):
 class KBDocumentUpdate(BaseModel):
     new_content: str
 
+class Message(BaseModel):
+    sender: str
+    text: str
+    type: str = "text"
+
+class ConversationHistory(BaseModel):
+    messages: List[Message]
+class HistoryItem(BaseModel):
+    session_id: str
+    title: str
+    timestamp: datetime
+
+class HistoryListResponse(BaseModel):
+    chats: List[HistoryItem]
+    has_more: bool
 
 # --- Utility Functions for Auth ---
 def get_user(db, username: str):
@@ -230,6 +247,7 @@ async def chat_with_bot(req: ChatRequest):
                     query=req.query,
                     client_id=req.client_id,
                     session_id=req.session_id,
+                    user_id=req.user_id,
                     llm=llm,
                     decomposition_llm=decomposition_llm
                 ):
@@ -326,7 +344,65 @@ def get_admin_panel():
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Control panel HTML file not found.")
+    
+@app.get("/history/user/{user_id}", response_model=HistoryListResponse, tags=["Chat"])
+def get_user_history(user_id: str, page: int = 1, size: int = 5):
+    """Retrieves a paginated list of chat sessions for a given user."""
+    try:
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+        r = redis.from_url(redis_url)
 
+        user_history_key = f"user_sessions:{user_id}"
+        start = (page - 1) * size
+        end = start + size - 1
+
+        # Get a "page" of session IDs from the user's list
+        session_ids = [sid.decode('utf-8') for sid in r.lrange(user_history_key, start, end)]
+
+        # Check if there are more pages
+        total_sessions = r.llen(user_history_key)
+        has_more = total_sessions > (end + 1)
+
+        chats = []
+        for sid in session_ids:
+            history = wms_bot.get_session_history(sid)
+            if history.messages:
+                # Use the first user message as the title
+                first_human_message = next((msg for msg in history.messages if msg.type == 'human'), None)
+                title = first_human_message.content if first_human_message else "Chat"
+                # Get timestamp from the first message
+                timestamp = history.messages[0].additional_kwargs.get('timestamp', datetime.now())
+                chats.append(HistoryItem(session_id=sid, title=title, timestamp=timestamp))
+
+        return HistoryListResponse(chats=chats, has_more=has_more)
+
+    except Exception as e:
+        logging.error(f"Error retrieving history list for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve history list.")
+    
+@app.get("/history/{session_id}", response_model=ConversationHistory, tags=["Chat"])
+def get_chat_history(session_id: str):
+    """Retrieves the full message history for a given session_id from Redis."""
+    try:
+        # Use the existing function from rag_pipeline to get history object
+        history = wms_bot.get_session_history(session_id)
+
+        # Convert LangChain message objects to our simple Message model
+        formatted_messages = []
+        for msg in history.messages:
+            sender = "unknown"
+            if msg.type == 'human':
+                sender = "user"
+            elif msg.type == 'ai':
+                sender = "bot"
+
+            formatted_messages.append(Message(sender=sender, text=msg.content))
+
+        return ConversationHistory(messages=formatted_messages)
+    except Exception as e:
+        logging.error(f"Error retrieving history for session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve chat history.")
+    
 # --- Admin CRUD Endpoints (with Activity Logging) ---
 @app.get("/admin/kb_documents", response_model=List[KBDocument], tags=["Admin"], dependencies=[Depends(get_current_active_user)])
 def get_all_kb_documents():
