@@ -28,7 +28,6 @@ services:
       - ./chroma_db_wms_faq:/app/chroma_db_wms_faq
       - ./chat_history.csv:/app/chat_history.csv
       - ./huggingface_cache:/root/.cache/huggingface
-      - ./redis_data:/data
     depends_on:
       - redis
 
@@ -39,3 +38,9 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+# NEW: Define the named volume at the end of the file
+volumes:
+  redis_data:
