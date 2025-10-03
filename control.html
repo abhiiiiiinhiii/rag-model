@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Refined Cool Gray & Slate Blue -->
+    <!-- Application Structure Plan: A multi-section layout with a new "Activity Log" section. This replaces the per-document history with a centralized, scannable audit trail, which is better for overall system monitoring. The core workflow for KB/FAQ management remains a two-column layout. This structure provides a scalable and comprehensive management experience with clear separation of concerns. -->
+    <!-- Visualization & Content Choices: Report Info: DB Changes -> Goal: Organize/Inform -> Viz: Chronological List/Timeline. Justification: A timeline is the most intuitive way to display a sequence of events. Color-coded icons are used to quickly differentiate action types (Create, Update, Delete). | Report Info: Chat Usage -> Goal: Show Change -> Viz: Line Chart (Chart.js). Justification: Best for time-series data. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        :root {
+            --brand-primary: #4f46e5;
+            --brand-primary-light: #e0e7ff;
+            --brand-primary-dark: #3730a3;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--gray-50); }
+        .sidebar-link { transition: all 0.2s ease-in-out; }
+        .sidebar-link:hover { background-color: var(--gray-100); color: var(--brand-primary); }
+        .sidebar-link.active {
+            background-color: var(--brand-primary-light);
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+        .modal-backdrop {
+            background-color: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(4px);
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+        .spinner { border-top-color: transparent; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .toast-notification { animation: toast-in 0.5s cubic-bezier(0.25, 1, 0.5, 1), toast-out 0.5s cubic-bezier(0.5, 0, 0.75, 0) 3.5s; }
+        @keyframes toast-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toast-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-100%); opacity: 0; } }
+        .skeleton-loader { background-color: var(--gray-200); border-radius: 0.25rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 50% { opacity: .5; } }
+        input:focus, select:focus, textarea:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 2px var(--brand-primary-light); outline: none; }
+        .EasyMDEContainer .CodeMirror { border-radius: 0.5rem; border-color: #e5e7eb; }
+        .activity-item .activity-icon {
+            transition: transform 0.2s ease-in-out;
+        }
+        .activity-item:hover .activity-icon {
+            transform: scale(1.1);
+        }
+    </style>
+    <link href="https://rsms.me/inter/inter.css" rel="stylesheet">
+</head>
+<body class="text-gray-900">
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-3"></div>
+
+    <!-- Login View -->
+    <div id="login-view" class="flex items-center justify-center min-h-screen bg-gray-100">
+        <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
+            <div class="text-center">
+                <div class="flex justify-center mb-4">
+                    <i class="fas fa-robot text-5xl text-indigo-600"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900">Control Panel Login</h2>
+                <p class="mt-2 text-sm text-gray-600">Please sign in to continue</p>
+            </div>
+            <form id="login-form" class="mt-8 space-y-6">
+                <div class="relative">
+                    <label for="username" class="sr-only">Username</label>
+                    <input id="username" name="username" type="text" required class="w-full px-4 py-3 text-gray-900 placeholder-gray-500 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Username (admin, editor, viewer)">
+                </div>
+                <div class="relative">
+                    <label for="password" class="sr-only">Password</label>
+                    <input id="password" name="password" type="password" required class="w-full px-4 py-3 text-gray-900 placeholder-gray-500 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Password (any)">
+                </div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Sign in
+                    </button>
+                </div>
+                <p id="login-error" class="text-center text-sm text-red-600 hidden">Invalid username or password.</p>
+            </form>
+        </div>
+    </div>
+    
+    <!-- App View -->
+    <div id="app-view" class="flex h-screen bg-gray-50 hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
+            <div class="p-6 border-b border-gray-200 flex items-center space-x-3">
+                <i class="fas fa-robot text-3xl text-indigo-600"></i>
+                <h1 class="text-xl font-bold text-gray-800">Chatbot Panel</h1>
+            </div>
+            <nav id="main-nav" class="p-4 flex-1">
+                <a href="#" id="nav-dashboard" class="sidebar-link active flex items-center px-4 py-3 rounded-lg text-gray-700">
+                    <i class="fas fa-chart-line w-6 text-center text-gray-400"></i><span class="ml-3">Dashboard</span>
+                </a>
+                <a href="#" id="nav-kb" class="sidebar-link flex items-center px-4 py-3 mt-2 rounded-lg text-gray-700">
+                    <i class="fas fa-book w-6 text-center text-gray-400"></i><span class="ml-3">Knowledge Base</span>
+                </a>
+                <a href="#" id="nav-faq" class="sidebar-link flex items-center px-4 py-3 mt-2 rounded-lg text-gray-700">
+                    <i class="fas fa-question-circle w-6 text-center text-gray-400"></i><span class="ml-3">FAQs</span>
+                </a>
+                 <a href="#" id="nav-activity" class="sidebar-link flex items-center px-4 py-3 mt-2 rounded-lg text-gray-700">
+                    <i class="fas fa-history w-6 text-center text-gray-400"></i><span class="ml-3">Activity Log</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-gray-200">
+                <div class="flex items-center">
+                    <img id="user-avatar" class="h-10 w-10 rounded-full" src="" alt="User Avatar">
+                    <div class="ml-3 flex-1">
+                        <p id="user-name" class="text-sm font-semibold text-gray-800"></p>
+                        <p id="user-role" class="text-xs text-gray-500"></p>
+                    </div>
+                    <button id="logout-btn" class="text-gray-400 hover:text-indigo-600 transition">
+                        <i class="fas fa-sign-out-alt text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-10 overflow-y-auto">
+
+            <!-- Dashboard View -->
+            <div id="dashboard-view">
+                <header class="mb-8">
+                    <h2 class="text-4xl font-bold text-gray-900">Analytics Dashboard</h2>
+                    <p class="text-gray-500 mt-1">Insights into chatbot usage and content performance.</p>
+                </header>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200"><h3 class="text-sm font-medium text-gray-500">Total Interactions</h3><p id="metric-total-interactions" class="text-3xl font-bold mt-2">--</p></div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200"><h3 class="text-sm font-medium text-gray-500">Unanswered Questions</h3><p id="metric-unanswered" class="text-3xl font-bold mt-2">--</p></div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200"><h3 class="text-sm font-medium text-gray-500">Total KB Documents</h3><p id="metric-kb-docs" class="text-3xl font-bold mt-2">--</p></div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200"><h3 class="text-sm font-medium text-gray-500">Total FAQs</h3><p id="metric-faqs" class="text-3xl font-bold mt-2">--</p></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200">
+                        <h3 class="text-xl font-semibold mb-4">Usage Over Time</h3>
+                        <div class="h-80"><canvas id="usage-chart"></canvas></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Last 10 Unanswered</h3>
+                        </div>
+                        <ul id="unanswered-list" class="space-y-3 mb-6"></ul>
+                        <!-- NEW: Export section for unanswered questions -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <h4 class="text-md font-semibold mb-3">Export Unanswered</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="start-date" class="text-sm font-medium text-gray-700">Start Date</label>
+                                    <input type="date" id="start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="end-date" class="text-sm font-medium text-gray-700">End Date</label>
+                                    <input type="date" id="end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                                </div>
+                                <button id="export-unanswered-btn" class="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                                    <i class="fas fa-download mr-2"></i><span>Export CSV</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Knowledge Base Management View -->
+            <div id="kb-view" class="hidden">
+                <header class="mb-8">
+                    <h2 class="text-4xl font-bold text-gray-900">Knowledge Base</h2>
+                    <p class="text-gray-500 mt-1">Manage Markdown documents used by the chatbot.</p>
+                </header>
+                <div id="add-kb-section" class="bg-white p-6 rounded-xl border border-gray-200 mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Add New Document</h3>
+                    <form id="add-kb-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                        <div class="col-span-1"><label for="kb-client-select" class="block text-sm font-medium text-gray-700 mb-1">Client</label><select id="kb-client-select" class="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm transition"></select></div>
+                        <div class="col-span-1"><label for="kb-file-upload" class="block text-sm font-medium text-gray-700 mb-1">Markdown File</label><input type="file" id="kb-file-upload" accept=".md" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition"></div>
+                        <div class="col-span-1 text-right"><button type="submit" class="w-full md:w-auto inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50"><i class="fas fa-plus mr-2"></i><span>Add Document</span></button></div>
+                    </form>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200"><h3 class="text-xl font-semibold mb-4">Manage Existing Documents</h3><input type="text" id="kb-search" placeholder="Search by filename..." class="w-full p-2.5 border border-gray-300 rounded-lg mb-4 transition"><div class="overflow-x-auto"><table class="min-w-full"><thead class="border-b border-gray-200"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Filename</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th></tr></thead><tbody id="kb-list" class="divide-y divide-gray-200"></tbody></table></div></div>
+            </div>
+
+            <!-- FAQ Management View -->
+            <div id="faq-view" class="hidden">
+                <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-4xl font-bold text-gray-900">FAQ Management</h2>
+                        <p class="text-gray-500 mt-1">Manage question and answer pairs.</p>
+                    </div>
+                    <div id="faq-actions" class="space-x-3">
+                         <button id="faq-import-btn" class="inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition"><i class="fas fa-upload mr-2"></i>Import CSV</button>
+                         <button id="faq-export-btn" class="inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition"><i class="fas fa-download mr-2"></i>Export CSV</button>
+                         <input type="file" id="faq-import-file" class="hidden" accept=".csv">
+                    </div>
+                </header>
+                <div id="add-faq-section" class="bg-white p-6 rounded-xl border border-gray-200 mb-8"><h3 class="text-xl font-semibold mb-4">Add New FAQ</h3><form id="add-faq-form" class="space-y-4"><div><label for="faq-question" class="block text-sm font-medium text-gray-700 mb-1">Question</label><input type="text" id="faq-question" class="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm transition"></div><div><label for="faq-answer" class="block text-sm font-medium text-gray-700 mb-1">Answer</label><textarea id="faq-answer" rows="3" class="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm transition"></textarea></div><div class="text-right"><button type="submit" class="inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50"><i class="fas fa-plus mr-2"></i><span>Add FAQ</span></button></div></form></div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200"><h3 class="text-xl font-semibold mb-4">Manage Existing FAQs</h3><input type="text" id="faq-search" placeholder="Search by question, answer, or ID..." class="w-full p-2.5 border border-gray-300 rounded-lg mb-4 transition"><div id="faq-list" class="space-y-3"></div></div>
+            </div>
+
+                 <!-- Activity Log View -->
+            <div id="activity-view" class="hidden">
+                <header class="mb-8">
+                    <h2 class="text-4xl font-bold text-gray-900">Activity Log</h2>
+                    <p class="text-gray-500 mt-1">A chronological log of all changes made in the control panel.</p>
+                </header>
+                <div class="bg-white rounded-xl border border-gray-200">
+                    <div id="activity-list" class="divide-y divide-gray-200">
+                        <!-- Activity items will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="edit-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="modal-backdrop fixed inset-0"></div>
+        <div class="modal-content bg-white rounded-lg shadow-xl m-4 max-w-4xl w-full z-50 transform opacity-0 -translate-y-10 flex flex-col max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-gray-200 flex-shrink-0">
+                <h3 id="edit-modal-title" class="text-2xl font-bold text-gray-900">Edit Item</h3>
+            </div>
+            <!-- Modal Body (Scrollable) -->
+            <div id="edit-modal-body" class="p-6 flex-grow overflow-y-auto">
+                <!-- Editor will be injected here -->
+            </div>
+            <!-- Modal Footer -->
+            <div class="p-6 bg-gray-50 border-t border-gray-200 flex justify-end items-center flex-shrink-0 rounded-b-lg">
+                <div class="space-x-3">
+                    <button id="edit-modal-cancel" class="py-2 px-5 bg-white border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-100 transition">Cancel</button>
+                    <button id="edit-modal-save" class="py-2 px-5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="delete-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden"><div class="modal-backdrop fixed inset-0"></div><div class="modal-content bg-white rounded-lg shadow-xl p-6 m-4 max-w-md w-full z-50 transform opacity-0 -translate-y-10 text-center"><div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><i class="fas fa-exclamation-triangle text-red-600"></i></div><h3 class="text-xl font-bold mt-4">Confirm Deletion</h3><p class="text-gray-600 mt-2">Are you sure? This action cannot be undone.</p><div class="mt-6 flex justify-center space-x-3"><button id="delete-modal-cancel" class="py-2 px-5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Cancel</button><button id="delete-modal-confirm" class="py-2 px-5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Delete</button></div></div></div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- CONFIGURATION ---
+    const API_BASE_URL = 'http://127.0.0.1:8000'; // For local testing. Change to your EC2 IP for production.
+    
+    // --- STATE MANAGEMENT ---
+    let easyMDEInstance = null;
+    let usageChart = null;
+
+    const appState = {
+        currentUser: null,
+        currentView: 'dashboard',
+        clients: ['common', 'modicare', 'spicejet'], // Hardcoded for now, can be fetched
+        kbData: [],
+        faqData: [],
+        analytics: {},
+        activityLog: [],
+        editingItem: null,
+        deletingItem: null,
+    };
+    
+    // --- ELEMENT SELECTORS ---
+    const loginView = document.getElementById('login-view');
+    const appView = document.getElementById('app-view');
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+    const logoutBtn = document.getElementById('logout-btn');
+    const mainNav = document.getElementById('main-nav');
+    const navDashboard = document.getElementById('nav-dashboard');
+    const navKb = document.getElementById('nav-kb');
+    const navFaq = document.getElementById('nav-faq');
+    const navActivity = document.getElementById('nav-activity');
+    const dashboardView = document.getElementById('dashboard-view');
+    const kbView = document.getElementById('kb-view');
+    const faqView = document.getElementById('faq-view');
+    const activityView = document.getElementById('activity-view');
+    
+    // --- API HELPER ---
+    const apiFetch = async (endpoint, options = {}) => {
+        const token = sessionStorage.getItem('accessToken');
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            ...options.headers,
+        };
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+        if (response.status === 401) {
+            handleLogout();
+            throw new Error('Unauthorized or session expired.');
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'An unknown API error occurred.' }));
+            throw new Error(errorData.detail || 'An API error occurred');
+        }
+        return response.status !== 204 ? response.json() : null;
+    };
+    
+    // --- UI UTILITY FUNCTIONS ---
+    const switchView = (view) => {
+        appState.currentView = view;
+        [dashboardView, kbView, faqView, activityView].forEach(v => v.classList.add('hidden'));
+        [navDashboard, navKb, navFaq, navActivity].forEach(n => n.classList.remove('active'));
+        const viewMap = {
+            dashboard: { viewEl: dashboardView, navEl: navDashboard, dataKey: 'analytics', fetchType: 'analytics', renderFn: renderDashboard },
+            kb: { viewEl: kbView, navEl: navKb, dataKey: 'kbData', fetchType: 'kb', renderFn: renderKbList },
+            faq: { viewEl: faqView, navEl: navFaq, dataKey: 'faqData', fetchType: 'faq', renderFn: renderFaqList },
+            activity: { viewEl: activityView, navEl: navActivity, dataKey: 'activityLog', fetchType: 'activity', renderFn: renderActivityLog },
+        };
+        const selected = viewMap[view];
+        if (selected) {
+            selected.viewEl.classList.remove('hidden');
+            selected.navEl.classList.add('active');
+            const data = appState[selected.dataKey];
+            const hasData = Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0;
+            if (!hasData) fetchData(selected.fetchType); else selected.renderFn();
+        }
+    };
+    const showToast = (message, isError = false) => {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast-notification p-4 rounded-lg shadow-lg text-white flex items-center space-x-3 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+        toast.innerHTML = `<i class="fas ${isError ? 'fa-times-circle' : 'fa-check-circle'}"></i><span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    };
+    const toggleButtonSpinner = (button, show) => {
+        const text = button.querySelector('span');
+        const icon = button.querySelector('i');
+        if (show) {
+            button.disabled = true;
+            if (text) text.textContent = 'Processing...';
+            if(icon) icon.className = 'fas fa-spinner animate-spin mr-2';
+        } else {
+            button.disabled = false;
+            if (text) text.textContent = button.dataset.originalText;
+            if(icon) icon.className = button.dataset.originalIcon;
+        }
+    };
+    const openModal = (modalId) => {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('.modal-backdrop').classList.remove('opacity-0');
+            modal.querySelector('.modal-content').classList.remove('opacity-0','-translate-y-10');
+        }, 10);
+    };
+    const closeModal = (modalId) => {
+        const modal = document.getElementById(modalId);
+        modal.querySelector('.modal-backdrop').classList.add('opacity-0');
+        modal.querySelector('.modal-content').classList.add('opacity-0', '-translate-y-10');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+    
+    // --- RENDER SKELETONS ---
+    const renderDashboardSkeleton = () => {
+        document.getElementById('metric-total-interactions').innerHTML = '<div class="skeleton-loader h-8 w-1/2"></div>';
+        document.getElementById('metric-unanswered').innerHTML = '<div class="skeleton-loader h-8 w-1/2"></div>';
+        document.getElementById('metric-kb-docs').innerHTML = '<div class="skeleton-loader h-8 w-1/2"></div>';
+        document.getElementById('metric-faqs').innerHTML = '<div class="skeleton-loader h-8 w-1/2"></div>';
+    };
+    const renderKbSkeleton = (count = 3) => {
+        const list = document.getElementById('kb-list');
+        list.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td class="px-6 py-4"><div class="skeleton-loader h-5 w-3/4"></div></td><td class="px-6 py-4"><div class="skeleton-loader h-5 w-1/2"></div></td><td class="px-6 py-4 text-right"><div class="skeleton-loader h-5 w-1/4 ml-auto"></div></td>`;
+            list.appendChild(row);
+        }
+    };
+    const renderFaqSkeleton = (count = 3) => {
+        const list = document.getElementById('faq-list');
+        list.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const div = document.createElement('div');
+            div.className = 'border border-gray-200 p-4 rounded-lg';
+            div.innerHTML = `<div class="skeleton-loader h-4 w-3/4 mb-2"></div><div class="skeleton-loader h-4 w-1/2"></div>`;
+            list.appendChild(div);
+        }
+    };
+     const renderActivitySkeleton = (count = 5) => {
+        const list = document.getElementById('activity-list');
+        list.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const div = document.createElement('div');
+            div.className = 'p-4 flex items-start space-x-4';
+            div.innerHTML = `<div class="skeleton-loader h-10 w-10 rounded-full"></div><div class="flex-1 space-y-2"><div class="skeleton-loader h-4 w-3/4"></div><div class="skeleton-loader h-3 w-1/4"></div></div>`;
+            list.appendChild(div);
+        }
+    };
+
+    // --- RENDER FUNCTIONS ---
+    const renderDashboard = () => {
+        const { totalInteractions, unanswered, kbDocs, faqs, usage, unansweredList } = appState.analytics;
+        document.getElementById('metric-total-interactions').textContent = totalInteractions;
+        document.getElementById('metric-unanswered').textContent = unanswered;
+        document.getElementById('metric-kb-docs').textContent = kbDocs;
+        document.getElementById('metric-faqs').textContent = faqs;
+        const listEl = document.getElementById('unanswered-list');
+        listEl.innerHTML = '';
+        if (unansweredList && unansweredList.length > 0) {
+            unansweredList.forEach(item => {
+                 const li = document.createElement('li');
+                li.className = 'text-sm text-gray-600 p-2 rounded-md hover:bg-gray-100 truncate';
+                li.textContent = item;
+                li.title = item;
+                listEl.appendChild(li);
+            });
+        } else {
+             listEl.innerHTML = `<p class="text-sm text-gray-500">No unanswered questions recorded.</p>`;
+        }
+
+        if (usageChart) usageChart.destroy();
+        const ctx = document.getElementById('usage-chart').getContext('2d');
+        usageChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: usage.labels, datasets: [{ label: 'Interactions', data: usage.data, borderColor: 'rgba(79, 70, 229, 1)', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    };
+    const renderActivityLog = () => {
+        const listEl = document.getElementById('activity-list');
+        listEl.innerHTML = '';
+        if (appState.activityLog.length === 0) {
+             listEl.innerHTML = `<div class="text-center py-10 text-gray-500">No activity recorded yet.</div>`;
+             return;
+        }
+        appState.activityLog.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'activity-item p-4 flex items-start space-x-4 hover:bg-gray-50';
+            let icon = 'fa-info-circle', color = 'bg-gray-400';
+            const action = item.Action || '';
+            if (action.includes('Add') || action.includes('Import') || action.includes('Create')) { icon = 'fa-plus'; color = 'bg-green-500'; }
+            else if (action.includes('Update') || action.includes('Edit')) { icon = 'fa-pencil-alt'; color = 'bg-blue-500'; }
+            else if (action.includes('Delete')) { icon = 'fa-trash-alt'; color = 'bg-red-500'; }
+            
+            div.innerHTML = `<div class="activity-icon h-10 w-10 flex-shrink-0 rounded-full ${color} flex items-center justify-center text-white"><i class="fas ${icon}"></i></div>
+                <div>
+                    <p class="text-sm"><span class="font-semibold">${item.User}</span> <span class="text-gray-500">${action.toLowerCase()}</span></p>
+                    <p class="text-sm text-gray-700">${item.Description}</p>
+                    <p class="text-xs text-gray-400 mt-1">${new Date(item.Timestamp).toLocaleString()}</p>
+                </div>`;
+            listEl.appendChild(div);
+        });
+    };
+    const renderKbList = () => {
+        const list = document.getElementById('kb-list');
+        const searchTerm = document.getElementById('kb-search').value.toLowerCase();
+        list.innerHTML = '';
+        const canEdit = ['Administrator', 'Editor'].includes(appState.currentUser.role);
+        const canDelete = appState.currentUser.role === 'Administrator';
+        
+        const filteredData = appState.kbData.filter(item => item.filename.toLowerCase().includes(searchTerm));
+        if (filteredData.length === 0) { list.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500">No documents found.</td></tr>`; return; }
+
+        filteredData.forEach(item => {
+            const row = document.createElement('tr');
+            row.className = "hover:bg-gray-50 transition-colors duration-150";
+            let actions = '';
+            if (canEdit) actions += `<button class="text-indigo-600 hover:text-indigo-900 font-semibold edit-btn" data-id="${item.id}" data-type="kb">Edit</button>`;
+            if (canDelete) actions += `<button class="text-red-600 hover:text-red-900 ml-4 font-semibold delete-btn" data-id="${item.id}" data-type="kb">Delete</button>`;
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${item.filename}</div></td>
+                <td class="px-6 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">${item.client}</span></td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">${actions || '<span class="text-gray-400">No actions</span>'}</td>
+            `;
+            list.appendChild(row);
+        });
+    };
+    const renderFaqList = () => {
+        const list = document.getElementById('faq-list');
+        const searchTerm = document.getElementById('faq-search').value.toLowerCase();
+        list.innerHTML = '';
+        const canEdit = ['Administrator', 'Editor'].includes(appState.currentUser.role);
+        const canDelete = appState.currentUser.role === 'Administrator';
+
+        const filteredData = appState.faqData.filter(item => 
+            item.question.toLowerCase().includes(searchTerm) || 
+            item.answer.toLowerCase().includes(searchTerm) ||
+            item.id.toLowerCase().includes(searchTerm)
+        );
+        if (filteredData.length === 0) { list.innerHTML = `<div class="text-center py-10 text-gray-500">No FAQs found.</div>`; return; }
+
+        filteredData.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'border border-gray-200 p-4 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all duration-200';
+            let actions = '';
+            if (canEdit) actions += `<button class="text-indigo-600 hover:text-indigo-900 font-semibold edit-btn" data-id="${item.id}" data-type="faq">Edit</button>`;
+            if (canDelete) actions += `<button class="text-red-600 hover:text-red-900 ml-4 font-semibold delete-btn" data-id="${item.id}" data-type="faq">Delete</button>`;
+            
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-800">${item.question}</p>
+                        <p class="text-sm text-gray-600 mt-1">${item.answer}</p>
+                        <p class="text-xs text-gray-400 mt-2 font-mono">ID: ${item.id}</p>
+                    </div>
+                    <div class="flex-shrink-0 ml-4">${actions || '<span class="text-gray-400">No actions</span>'}</div>
+                </div>`;
+            list.appendChild(div);
+        });
+    };
+    
+    // --- AUTH AND PERMISSIONS ---
+    const applyPermissions = () => {
+        const { role } = appState.currentUser;
+        document.getElementById('user-name').textContent = appState.currentUser.full_name;
+        document.getElementById('user-role').textContent = role;
+        const avatarChar = appState.currentUser.full_name.charAt(0).toUpperCase();
+        document.getElementById('user-avatar').src = `https://placehold.co/100x100/e0e7ff/3730a3?text=${avatarChar}`;
+        const canEdit = ['Administrator', 'Editor'].includes(role);
+        const canAdmin = role === 'Administrator';
+        document.getElementById('add-kb-section').style.display = canEdit ? 'block' : 'none';
+        document.getElementById('add-faq-section').style.display = canEdit ? 'block' : 'none';
+        document.getElementById('faq-actions').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('nav-activity').style.display = canAdmin ? 'flex' : 'none';
+        if (appState.currentView === 'activity' && !canAdmin) switchView('dashboard');
+    };
+    
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        button.disabled = true;
+        loginError.classList.add('hidden');
+        const formData = new FormData(loginForm);
+        try {
+            const data = await fetch(`${API_BASE_URL}/token`, { method: 'POST', body: new URLSearchParams(formData) }).then(res => {
+                if (!res.ok) throw new Error('Login failed. Please check credentials.');
+                return res.json();
+            });
+            sessionStorage.setItem('accessToken', data.access_token);
+            const userData = await apiFetch('/users/me');
+            appState.currentUser = userData;
+            loginView.classList.add('hidden');
+            appView.classList.remove('hidden');
+            initApp();
+        } catch (error) {
+            loginError.textContent = error.message;
+            loginError.classList.remove('hidden');
+        } finally {
+            button.disabled = false;
+        }
+    };
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('accessToken');
+        appState.currentUser = null;
+        Object.assign(appState, { currentView: 'dashboard', kbData: [], faqData: [], analytics: {}, activityLog: [] });
+        if(usageChart) { usageChart.destroy(); usageChart = null; }
+        appView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+        loginForm.reset();
+    };
+
+    // --- DATA FETCHING ---
+    const fetchData = async (type) => {
+        try {
+            if (type === 'analytics') {
+                renderDashboardSkeleton();
+                const [analyticsData, kbData, faqData] = await Promise.all([apiFetch('/admin/analytics'), apiFetch('/admin/kb_documents'), apiFetch('/admin/faqs')]);
+                appState.analytics = analyticsData;
+                appState.kbData = kbData;
+                appState.faqData = faqData;
+                appState.analytics.kbDocs = appState.kbData.length;
+                appState.analytics.faqs = appState.faqData.length;
+                renderDashboard();
+            } else if (type === 'kb') {
+                renderKbSkeleton();
+                appState.kbData = await apiFetch('/admin/kb_documents');
+                renderKbList();
+            } else if (type === 'faq') {
+                renderFaqSkeleton();
+                appState.faqData = await apiFetch('/admin/faqs');
+                renderFaqList();
+            } else if (type === 'activity') {
+                renderActivitySkeleton();
+                appState.activityLog = await apiFetch('/admin/activity_log');
+                renderActivityLog();
+            }
+        } catch (error) {
+            showToast(`Failed to fetch ${type}: ${error.message}`, true);
+        }
+    };
+    
+    // --- EVENT HANDLERS ---
+    const handleAddKb = async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        const clientFolder = document.getElementById('kb-client-select').value;
+        const fileInput = document.getElementById('kb-file-upload');
+        if (fileInput.files.length === 0) { showToast('Please select a markdown file.', true); return; }
+        toggleButtonSpinner(button, true);
+        try {
+            await apiFetch(`/admin/ingest/${clientFolder}`, { method: 'POST' });
+            showToast(`Ingestion for '${clientFolder}' started. Refreshing list in a few seconds...`);
+            setTimeout(() => fetchData('kb'), 3000);
+            e.target.reset();
+        } catch (error) {
+            showToast(error.message, true);
+        } finally {
+            toggleButtonSpinner(button, false);
+        }
+    };
+    const handleAddFaq = async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        const question = document.getElementById('faq-question').value;
+        const answer = document.getElementById('faq-answer').value;
+        if (!question || !answer) { showToast('Please fill out both fields.', true); return; }
+        toggleButtonSpinner(button, true);
+        try {
+            const newItem = await apiFetch('/admin/faqs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, answer }) });
+            appState.faqData.unshift(newItem);
+            renderFaqList();
+            showToast('FAQ added successfully!');
+            e.target.reset();
+            fetchData('activity');
+        } catch (error) { showToast(error.message, true); }
+        finally { toggleButtonSpinner(button, false); }
+    };
+
+    const handleFaqExport = async () => {
+        const button = document.getElementById('faq-export-btn');
+        toggleButtonSpinner(button, true);
+        try {
+            const faqs = await apiFetch('/admin/faqs');
+            if (faqs.length === 0) {
+                showToast('No FAQs to export.', true);
+                return;
+            }
+            let csvContent = "question,answer\n";
+            faqs.forEach(faq => {
+                const question = `"${faq.question.replace(/"/g, '""')}"`;
+                const answer = `"${faq.answer.replace(/"/g, '""')}"`;
+                csvContent += `${question},${answer}\n`;
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "faqs_export.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            showToast('Export successful!');
+        } catch (error) {
+            showToast(`Export failed: ${error.message}`, true);
+        } finally {
+            toggleButtonSpinner(button, false);
+        }
+    };
+
+    const handleFaqImport = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const button = document.getElementById('faq-import-btn');
+        toggleButtonSpinner(button, true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const token = sessionStorage.getItem('accessToken');
+            const response = await fetch(`${API_BASE_URL}/admin/faqs/upload_csv`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Import failed.');
+            
+            showToast(result.message);
+            fetchData('faq');
+            fetchData('activity');
+            if (appState.currentView === 'dashboard') {
+                fetchData('analytics');
+            }
+        } catch (error) {
+            showToast(`Import failed: ${error.message}`, true);
+        } finally {
+            event.target.value = '';
+            toggleButtonSpinner(button, false);
+        }
+    };
+
+    const handleEditClick = async (id, type) => {
+        appState.editingItem = { id, type };
+        const modalTitle = document.getElementById('edit-modal-title');
+        const modalBody = document.getElementById('edit-modal-body');
+        modalBody.innerHTML = '<div class="flex justify-center p-8"><div class="spinner h-8 w-8 border-4 border-indigo-200 rounded-full"></div></div>';
+        openModal('edit-modal');
+        try {
+            if (type === 'kb') {
+                const data = await apiFetch(`/admin/kb_documents/${encodeURIComponent(id)}`);
+                modalTitle.textContent = `Edit Document: ${data.id}`;
+                modalBody.innerHTML = `<textarea id="edit-kb-content"></textarea>`;
+                easyMDEInstance = new EasyMDE({ element: document.getElementById('edit-kb-content'), initialValue: data.content, spellChecker: false, minHeight: "300px" });
+            } else {
+                const data = appState.faqData.find(i => i.id === id);
+                modalTitle.textContent = 'Edit FAQ';
+                modalBody.innerHTML = `<div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Question</label><input type="text" id="edit-faq-question" value="${data.question}" class="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm transition"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Answer</label><textarea id="edit-faq-answer" rows="3" class="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm transition">${data.answer}</textarea></div></div>`;
+            }
+        } catch (error) { showToast(error.message, true); closeModal('edit-modal'); }
+    };
+    const handleSaveEdit = async () => {
+        const { id, type } = appState.editingItem;
+        const button = document.getElementById('edit-modal-save');
+        toggleButtonSpinner(button, true);
+        try {
+            if (type === 'kb') {
+                const newContent = easyMDEInstance.value();
+                await apiFetch(`/admin/kb_documents/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({new_content: newContent}) });
+                if (easyMDEInstance) { easyMDEInstance.toTextArea(); easyMDEInstance = null; }
+            } else {
+                const newQuestion = document.getElementById('edit-faq-question').value;
+                const newAnswer = document.getElementById('edit-faq-answer').value;
+                await apiFetch(`/admin/faqs/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: newQuestion, answer: newAnswer }) });
+                const item = appState.faqData.find(i => i.id === id);
+                if(item) Object.assign(item, { question: newQuestion, answer: newAnswer });
+                renderFaqList();
+            }
+            closeModal('edit-modal');
+            showToast('Item updated successfully!');
+            fetchData('activity');
+        } catch (error) { showToast(error.message, true); }
+        finally { toggleButtonSpinner(button, false); }
+    };
+    const handleDeleteClick = (id, type) => { appState.deletingItem = { id, type }; openModal('delete-modal'); };
+    const handleConfirmDelete = async () => {
+        const { id, type } = appState.deletingItem;
+        const button = document.getElementById('delete-modal-confirm');
+        toggleButtonSpinner(button, true);
+        try {
+            if (type === 'kb') {
+                await apiFetch(`/admin/kb_documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                appState.kbData = appState.kbData.filter(i => i.id !== id);
+                renderKbList();
+            } else {
+                await apiFetch(`/admin/faqs/${id}`, { method: 'DELETE' });
+                appState.faqData = appState.faqData.filter(i => i.id !== id);
+                renderFaqList();
+            }
+            closeModal('delete-modal');
+            showToast('Item deleted successfully!');
+            fetchData('activity');
+            if (appState.currentView === 'dashboard') {
+                fetchData('analytics');
+            }
+        } catch (error) { showToast(error.message, true); }
+        finally { toggleButtonSpinner(button, false); }
+    };
+
+    const handleExportUnanswered = async () => {
+        const button = document.getElementById('export-unanswered-btn');
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        if (!startDate || !endDate) {
+            showToast('Please select both a start and end date.', true);
+            return;
+        }
+
+        toggleButtonSpinner(button, true);
+        try {
+            const token = sessionStorage.getItem('accessToken');
+            const response = await fetch(`${API_BASE_URL}/admin/export_unanswered?start_date=${startDate}&end_date=${endDate}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to export data.');
+            }
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `unanswered_questions_${startDate}_to_${endDate}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            showToast('Export successful!');
+        } catch (error) {
+            showToast(error.message, true);
+        } finally {
+            toggleButtonSpinner(button, false);
+        }
+    };
+    
+    // --- INITIALIZATION ---
+    const initApp = () => {
+        applyPermissions();
+        const clientSelect = document.getElementById('kb-client-select');
+        clientSelect.innerHTML = '';
+        appState.clients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client;
+            option.textContent = client.charAt(0).toUpperCase() + client.slice(1);
+            clientSelect.appendChild(option);
+        });
+        const initialView = appState.currentUser.role === 'Viewer' ? 'dashboard' : 'dashboard';
+        switchView(initialView);
+    };
+
+    // --- GLOBAL EVENT LISTENERS ---
+    loginForm.addEventListener('submit', handleLogin);
+    logoutBtn.addEventListener('click', handleLogout);
+    navDashboard.addEventListener('click', (e) => { e.preventDefault(); switchView('dashboard'); });
+    navKb.addEventListener('click', (e) => { e.preventDefault(); switchView('kb'); });
+    navFaq.addEventListener('click', (e) => { e.preventDefault(); switchView('faq'); });
+    navActivity.addEventListener('click', (e) => { e.preventDefault(); switchView('activity'); });
+    document.getElementById('add-kb-form').addEventListener('submit', handleAddKb);
+    document.getElementById('add-faq-form').addEventListener('submit', handleAddFaq);
+    document.getElementById('kb-search').addEventListener('input', () => renderKbList());
+    document.getElementById('faq-search').addEventListener('input', () => renderFaqList());
+    
+    document.getElementById('faq-import-btn').addEventListener('click', () => document.getElementById('faq-import-file').click());
+    document.getElementById('faq-export-btn').addEventListener('click', handleFaqExport);
+    document.getElementById('faq-import-file').addEventListener('change', handleFaqImport);
+
+    document.getElementById('export-unanswered-btn').addEventListener('click', handleExportUnanswered);
+
+    document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (editBtn) handleEditClick(editBtn.dataset.id, editBtn.dataset.type);
+        if (deleteBtn) handleDeleteClick(deleteBtn.dataset.id, deleteBtn.dataset.type);
+    });
+    document.getElementById('edit-modal-save').addEventListener('click', handleSaveEdit);
+    document.getElementById('edit-modal-cancel').addEventListener('click', () => {
+        if (easyMDEInstance) { easyMDEInstance.toTextArea(); easyMDEInstance = null; }
+        closeModal('edit-modal');
+    });
+    document.getElementById('delete-modal-confirm').addEventListener('click', handleConfirmDelete);
+    document.getElementById('delete-modal-cancel').addEventListener('click', () => closeModal('delete-modal'));
+    
+    document.querySelectorAll('button').forEach(button => {
+        const text = button.querySelector('span');
+        const icon = button.querySelector('i');
+        if (text) button.dataset.originalText = text.textContent;
+        if (icon) button.dataset.originalIcon = icon.className;
+    });
+
+    // Check for existing session token on page load
+    const token = sessionStorage.getItem('accessToken');
+    if (token) {
+        apiFetch('/users/me').then(userData => {
+            appState.currentUser = userData;
+            loginView.classList.add('hidden');
+            appView.classList.remove('hidden');
+            initApp();
+        }).catch(() => {
+            handleLogout(); // Token is invalid or expired
+        });
+    }
+});
+</script>
+</body>
+</html>
+

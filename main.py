@@ -1,18 +1,42 @@
 import os
 import csv
-from datetime import datetime
 import logging
-from fastapi import FastAPI, HTTPException
+import pandas as pd
+import yaml
+from datetime import datetime
+from typing import Union, Dict, AsyncGenerator, List, Optional
+from io import StringIO
+from fastapi import FastAPI, HTTPException, Depends, status, Body, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from typing import Union, Dict, AsyncGenerator
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.responses import StreamingResponse
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from rag_pipeline import WMSChatbot
-import yaml
+
+# Load environment variables from your .env file
+load_dotenv()
+
+# --- Security and Authentication Setup ---
+SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_for_dev_only")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+# In a real app, this would be a proper user database.
+mock_users_db = {
+    "admin": {"username": "admin", "full_name": "Admin User", "role": "Administrator", "hashed_password": "$2b$12$EixZaYVK1e.AS8ALsT6M0.j4c68oOF9M95P./5wCIirl.pIQ5sN5y"},
+    "editor": {"username": "editor", "full_name": "Editor User", "role": "Editor", "hashed_password": "$2b$12$gT9vX6Ew2xR.B.t6E8wSHe0v.e2d.LgAX2wU4l.A3gI7sB3tZ9t/m"},
+    "viewer": {"username": "viewer", "full_name": "Viewer User", "role": "Viewer", "hashed_password": "$2b$12$Z.o.2.i.fJ9uU7oX3.4j.eX2xK/3y.A6V8nL0lZ5gU9v.3qH8nL/m"},
+}
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# --- Configuration Loading ---
 # Load client configurations from YAML
 try:
     with open("config.yaml", 'r') as f:
@@ -37,25 +61,19 @@ else:
         }
     }
 
-# Load environment variables from your .env file
-load_dotenv()
-
 # --- App Initialization ---
 app = FastAPI(title="WMS Multi-Tenant Chatbot API")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/resources", StaticFiles(directory="resources"), name="resources")
 
 print("Initializing embedding model and WMSChatbot instance...")
-
 embedding_api_key = os.getenv("GOOGLE_API_KEY_EMBEDDING")
 if not embedding_api_key:
     raise ValueError("GOOGLE_API_KEY_EMBEDDING not found in .env file.")
-
 embedding_model = GoogleGenerativeAIEmbeddings(
     model="models/text-embedding-004",
     google_api_key=embedding_api_key
 )
-
 wms_bot = WMSChatbot(embedding_model=embedding_model)
 print("Startup complete. Chatbot is ready.")
 
@@ -63,14 +81,9 @@ print("Startup complete. Chatbot is ready.")
 async def startup_event():
     print("FastAPI application startup ready.")
 
-wms_origins = [
-    "https://uatreham.holisollogistics.com",  # For the final WMS integration
-    "http://localhost:8001",
-    "http://spicewms.test"                  # For your local Python server test
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=wms_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -80,6 +93,9 @@ app.add_middleware(
 LOG_FILE = 'chat_history.csv'
 LOG_HEADERS = ['Timestamp', 'ClientID', 'Query', 'Answer']
 CONFIDENCE_THRESHOLD = 85
+
+ACTIVITY_LOG_FILE = 'activity_log.csv'
+ACTIVITY_LOG_HEADERS = ['Timestamp', 'User', 'Action', 'Description']
 
 def log_conversation(client_id: str, query: str, answer: str):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -94,11 +110,20 @@ def log_conversation(client_id: str, query: str, answer: str):
     except Exception as e:
         logging.error(f"Failed to log conversation: {e}")
 
-# @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-# async def read_root():
-#     with open("index.html") as f:
-#         return HTMLResponse(content=f.read(), status_code=200)
-    
+def log_admin_activity(user: 'User', action: str, description: str):
+    """Writes an entry to the admin activity log."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    row = [timestamp, user.full_name, action, description]
+    file_exists = os.path.isfile(ACTIVITY_LOG_FILE)
+    try:
+        with open(ACTIVITY_LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(ACTIVITY_LOG_HEADERS)
+            writer.writerow(row)
+    except Exception as e:
+        logging.error(f"Failed to log admin activity: {e}")
+
 # --- Pydantic Models ---
 class ChatRequest(BaseModel):
     query: str
@@ -118,10 +143,72 @@ class ErrorAnalysisRequest(BaseModel):
     client_id: str
     session_id: str
 
-# NEW: Pydantic model for the FAQ ingestion request, now a directory
 class IngestFAQRequest(BaseModel):
     faq_directory: str
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class User(BaseModel):
+    username: str
+    full_name: str
+    role: str
+
+class FAQ(BaseModel):
+    id: str
+    question: str
+    answer: str
+
+class FAQCreate(BaseModel):
+    question: str
+    answer: str
+
+class KBDocument(BaseModel):
+    id: str
+    filename: str
+    client: str
+
+class KBDocumentContent(BaseModel):
+    id: str
+    content: str
+    metadata: dict
+
+class KBDocumentUpdate(BaseModel):
+    new_content: str
+
+
+# --- Utility Functions for Auth ---
+def get_user(db, username: str):
+    if username in db:
+        return db[username]
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = get_user(mock_users_db, username)
+    if user is None:
+        raise credentials_exception
+    return User(**user)
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    return current_user
+
+# --- Core API Endpoints ---
 @app.post("/chat", summary="Chat with bot")
 async def chat_with_bot(req: ChatRequest):
     client_id = req.client_id
@@ -142,15 +229,21 @@ async def chat_with_bot(req: ChatRequest):
         llm, decomposition_llm = wms_bot._get_llms_for_key(api_key)
 
         async def stream_generator() -> AsyncGenerator[str, None]:
-            log_conversation(req.client_id, req.query, "-> Streaming response started")
-            async for chunk in wms_bot.ask_stream(
-                query=req.query,
-                client_id=req.client_id,
-                session_id=req.session_id,
-                llm=llm,
-                decomposition_llm=decomposition_llm
-            ):
-                yield chunk
+            full_answer_parts = []
+            try:
+                async for chunk in wms_bot.ask_stream(
+                    query=req.query,
+                    client_id=req.client_id,
+                    session_id=req.session_id,
+                    llm=llm,
+                    decomposition_llm=decomposition_llm
+                ):
+                    full_answer_parts.append(chunk)
+                    yield chunk
+            finally:
+                final_answer = "".join(full_answer_parts)
+                if final_answer:
+                    log_conversation(req.client_id, req.query, final_answer)
         
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
         
@@ -181,15 +274,9 @@ async def analyze_client_error(req: ErrorAnalysisRequest):
 
     try:
         llm, _ = wms_bot._get_llms_for_key(api_key)
-        
-        response_data = wms_bot.ask_error_solution(
-            query=formatted_query,
-            llm=llm,
-        )
-        
+        response_data = wms_bot.ask_error_solution(query=formatted_query, llm=llm)
         answer = response_data.get("answer", "")
         confidence = response_data.get("confidence_score", 0)
-
         no_info_string = "I don't have enough information"
         
         if confidence >= CONFIDENCE_THRESHOLD and no_info_string not in answer:
@@ -198,27 +285,213 @@ async def analyze_client_error(req: ErrorAnalysisRequest):
         else:
             log_conversation(req.client_id, f"PROACTIVE_REJECT (C:{confidence} | No Info)", answer)
             return {"answer": ""}
-
     except Exception as e:
         logging.error(f"Error during proactive analysis for client '{req.client_id}': {e}", exc_info=True)
         return {"answer": ""}
-    
+
 @app.post("/admin/ingest/{source_folder}", response_model=IngestResponse, summary="Ingest docs (Admin Only)")
 async def ingest_from_folder(source_folder: str):
     try:
         stats = wms_bot.ingest_documents(source_folder=source_folder)
         return {"message": f"Ingestion from '{source_folder}' complete. Added/Updated: {stats['added_or_updated']}. Deleted: {stats['deleted']}."}
     except Exception as e:
-        logging.error(f"Ingestion failed for folder '{source_folder}': {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# NEW: Admin endpoint to ingest FAQs
 @app.post("/admin/ingest_faqs", response_model=IngestResponse, summary="Ingest FAQs from CSV (Admin Only)")
 async def ingest_faqs(req: IngestFAQRequest):
     try:
         wms_bot.ingest_faqs_from_csv(req.faq_directory)
         return {"message": f"FAQ ingestion from '{req.faq_directory}' complete."}
     except Exception as e:
-        logging.error(f"FAQ ingestion failed for '{req.faq_directory}': {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- API ENDPOINTS FOR CONTROL PANEL ---
+
+# --- Auth Endpoints ---
+@app.post("/token", response_model=Token, tags=["Auth"])
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = get_user(mock_users_db, form_data.username)
+    if not user or not pwd_context.verify(form_data.password, user['hashed_password']):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Incorrect username or password"
+        )
+    access_token = create_access_token(data={"sub": user["username"]})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me", response_model=User, tags=["Auth"])
+async def read_users_me(current_user: User = Depends(get_current_active_user)):
+    return current_user
+
+# --- Frontend Serving Endpoint ---
+@app.get("/admin", response_class=HTMLResponse, tags=["Frontend"])
+def get_admin_panel():
+    try:
+        with open("control.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Control panel HTML file not found.")
+
+# --- Admin CRUD Endpoints (with Activity Logging) ---
+@app.get("/admin/kb_documents", response_model=List[KBDocument], tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def get_all_kb_documents():
+    return wms_bot.get_all_kb_documents()
+
+@app.get("/admin/kb_documents/{doc_source:path}", response_model=KBDocumentContent, tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def get_kb_document(doc_source: str):
+    doc = wms_bot.get_kb_document_content(doc_source)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+@app.put("/admin/kb_documents/{doc_source:path}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin"])
+def update_kb_document(doc_source: str, payload: KBDocumentUpdate, current_user: User = Depends(get_current_active_user)):
+    if current_user.role not in ["Administrator", "Editor"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        wms_bot.update_kb_document(doc_source, payload.new_content)
+        log_admin_activity(current_user, "Updated Document", f"Edited the content of '{doc_source}'")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.delete("/admin/kb_documents/{doc_source:path}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin"])
+def delete_kb_document(doc_source: str, current_user: User = Depends(get_current_active_user)):
+    if current_user.role != "Administrator":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    wms_bot.delete_kb_document(doc_source)
+    log_admin_activity(current_user, "Deleted Document", f"Removed the document '{doc_source}'")
+
+@app.get("/admin/faqs", response_model=List[FAQ], tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def get_all_faqs():
+    return wms_bot.get_all_faqs()
+
+@app.post("/admin/faqs", response_model=FAQ, status_code=status.HTTP_201_CREATED, tags=["Admin"])
+def add_faq(faq: FAQCreate, current_user: User = Depends(get_current_active_user)):
+    if current_user.role not in ["Administrator", "Editor"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    new_faq = wms_bot.add_single_faq(faq.question, faq.answer)
+    log_admin_activity(current_user, "Added FAQ", f"Created new FAQ with question: '{faq.question[:50]}...'")
+    return new_faq
+
+@app.put("/admin/faqs/{faq_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin"])
+def update_faq(faq_id: str, faq: FAQCreate, current_user: User = Depends(get_current_active_user)):
+    if current_user.role not in ["Administrator", "Editor"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    wms_bot.update_faq(faq_id, faq.question, faq.answer)
+    log_admin_activity(current_user, "Updated FAQ", f"Edited FAQ ID: {faq_id}")
+
+@app.delete("/admin/faqs/{faq_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin"])
+def delete_faq(faq_id: str, current_user: User = Depends(get_current_active_user)):
+    if current_user.role != "Administrator":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    wms_bot.delete_faq(faq_id)
+    log_admin_activity(current_user, "Deleted FAQ", f"Removed FAQ ID: {faq_id}")
+
+@app.post("/admin/faqs/upload_csv", tags=["Admin"])
+async def upload_faqs_csv(file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)):
+    if current_user.role not in ["Administrator", "Editor"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a CSV.")
+    try:
+        contents = await file.read()
+        buffer = StringIO(contents.decode('utf-8-sig'))
+        csv_reader = csv.DictReader(buffer)
+        if 'question' not in csv_reader.fieldnames or 'answer' not in csv_reader.fieldnames:
+            raise HTTPException(status_code=400, detail="CSV must have 'question' and 'answer' columns.")
+        
+        imported_count = 0
+        skipped_count = 0
+        for row in csv_reader:
+            question, answer = row.get('question'), row.get('answer')
+            if question and answer:
+                if not wms_bot.faq_question_exists(question):
+                    wms_bot.add_single_faq(question, answer)
+                    imported_count += 1
+                else:
+                    skipped_count += 1
+        
+        log_admin_activity(current_user, "Imported FAQs", f"Imported {imported_count} new, skipped {skipped_count} duplicate FAQs from '{file.filename}'")
+        return {"message": f"Import complete. Added: {imported_count}. Skipped duplicates: {skipped_count}."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+# --- Analytics and Log Endpoints ---
+@app.get("/admin/analytics", tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def get_analytics():
+    try:
+        kb_docs_count = len(wms_bot.get_all_kb_documents())
+        faqs_count = len(wms_bot.get_all_faqs())
+        if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
+            return {"totalInteractions": 0, "unanswered": 0, "kbDocs": kb_docs_count, "faqs": faqs_count, "usage": {"labels": [], "data": []}, "unansweredList": []}
+        
+        df = pd.read_csv(LOG_FILE, on_bad_lines='skip')
+        if df.empty:
+            return {"totalInteractions": 0, "unanswered": 0, "kbDocs": kb_docs_count, "faqs": faqs_count, "usage": {"labels": [], "data": []}, "unansweredList": []}
+            
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        df_filtered = df[~df['Query'].str.startswith('PROACTIVE_', na=False)]
+        total_interactions = len(df_filtered)
+        unanswered_string = "I don't have that information right now"
+        unanswered_df = df_filtered[df_filtered['Answer'].str.contains(unanswered_string, na=False)]
+        unanswered_count = len(unanswered_df)
+        
+        # --- MODIFICATION: Get last 10 unanswered questions instead of top 5 frequent ---
+        unanswered_list = unanswered_df.sort_values(by='Timestamp', ascending=False).head(10)['Query'].tolist()
+
+        df_filtered['Date'] = df_filtered['Timestamp'].dt.date
+        today = pd.to_datetime('today').date()
+        last_7_days = pd.date_range(start=today - pd.Timedelta(days=6), end=today)
+        usage_counts = df_filtered['Date'].value_counts().reindex(last_7_days.date, fill_value=0).sort_index()
+        usage_data = {"labels": [d.strftime('%a') for d in usage_counts.index], "data": usage_counts.values.tolist()}
+        
+        return {"totalInteractions": total_interactions, "unanswered": unanswered_count, "kbDocs": kb_docs_count, "faqs": faqs_count, "usage": usage_data, "unansweredList": unanswered_list}
+    except Exception as e:
+        logging.error(f"Error processing analytics: {e}")
+        return {"totalInteractions": "Error", "unanswered": "Error", "kbDocs": "Error", "faqs": "Error", "usage": {"labels": [], "data": []}, "unansweredList": ["Error reading log file"]}
+
+# --- NEW: Endpoint for exporting unanswered questions ---
+@app.get("/admin/export_unanswered", tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def export_unanswered_questions(start_date: Optional[str] = Query(None), end_date: Optional[str] = Query(None)):
+    if not os.path.exists(LOG_FILE):
+        raise HTTPException(status_code=404, detail="Log file not found.")
+
+    try:
+        df = pd.read_csv(LOG_FILE, on_bad_lines='skip')
+        if df.empty:
+            return StreamingResponse(StringIO(""), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=unanswered_questions.csv"})
+        
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        unanswered_string = "I don't have that information right now"
+        unanswered_df = df[df['Answer'].str.contains(unanswered_string, na=False)].copy()
+
+        if start_date:
+            unanswered_df = unanswered_df[unanswered_df['Timestamp'] >= pd.to_datetime(start_date)]
+        if end_date:
+            unanswered_df = unanswered_df[unanswered_df['Timestamp'] <= pd.to_datetime(end_date).replace(hour=23, minute=59, second=59)]
+        
+        output = StringIO()
+        unanswered_df[['Timestamp', 'ClientID', 'Query']].to_csv(output, index=False)
+        output.seek(0)
+        
+        return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=unanswered_questions_{start_date}_to_{end_date}.csv"})
+
+    except Exception as e:
+        logging.error(f"Error exporting unanswered questions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to export data.")
+
+
+@app.get("/admin/activity_log", tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def get_activity_log():
+    if not os.path.exists(ACTIVITY_LOG_FILE):
+        return []
+    try:
+        with open(ACTIVITY_LOG_FILE, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            logs = list(reader)
+            # Reverse to show most recent first and limit to the last 50 entries
+            return logs[::-1][:50]
+    except Exception as e:
+        logging.error(f"Could not read activity log: {e}")
+        return [{"User": "System", "Action": "Error", "Description": f"Could not read activity log: {e}"}]
 
