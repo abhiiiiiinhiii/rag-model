@@ -1,5 +1,5 @@
 // static/loader.js - v2 (Complete and Self-Contained)
-const CHATBOT_SERVER_URL = 'http://15.207.221.105:8000';
+const CHATBOT_SERVER_URL = 'http://15.207.247.255:8000';
 const widgetHTML = `
     <div id="chat-toggle-button">
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
