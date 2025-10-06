@@ -356,10 +356,14 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
         user_history_key = f"user_sessions:{user_id}"
         start = (page - 1) * size
         end = start + size - 1
+
         session_ids = [sid.decode('utf-8') for sid in r.lrange(user_history_key, start, end)]
 
         total_sessions = r.llen(user_history_key)
         has_more = total_sessions > (end + 1)
+
+        # Get all "last updated" timestamps in one efficient call
+        timestamps_map = r.hgetall("sessions:last_updated")
 
         chats = []
         for sid in session_ids:
@@ -368,13 +372,18 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
                 first_human_message = next((msg for msg in history.messages if msg.type == 'human'), None)
                 title = first_human_message.content if first_human_message else "Chat"
                 
-                try:
-                    timestamp_ms = int(sid.split('_')[1])
-                    # Create a timezone-aware datetime object in UTC
-                    timestamp = datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
-                except (IndexError, ValueError):
-                    # Fallback should also be timezone-aware
-                    timestamp = datetime.now(timezone.utc)
+                # --- MODIFIED: Prioritize the "last updated" timestamp ---
+                last_updated_iso = timestamps_map.get(sid.encode('utf-8'))
+                if last_updated_iso:
+                    # If a "last updated" time exists, use it.
+                    timestamp = datetime.fromisoformat(last_updated_iso.decode('utf-8'))
+                else:
+                    # Fallback for older conversations: use the creation time from the session ID.
+                    try:
+                        timestamp_ms = int(sid.split('_')[1])
+                        timestamp = datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
+                    except (IndexError, ValueError):
+                        timestamp = datetime.now(timezone.utc)
                 
                 chats.append(HistoryItem(session_id=sid, title=title, timestamp=timestamp))
 
@@ -383,7 +392,7 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
     except Exception as e:
         logging.error(f"Error retrieving history list for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve history list.")
-        
+    
 @app.get("/history/{session_id}", response_model=ConversationHistory, tags=["Chat"])
 def get_chat_history(session_id: str):
     """Retrieves the full message history for a given session_id from Redis."""

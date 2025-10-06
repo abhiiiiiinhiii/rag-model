@@ -18,6 +18,7 @@ from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_redis import RedisChatMessageHistory
 import redis
+from datetime import datetime, timezone
 MANUALS_PATH = "manuals"
 PERSIST_DIRECTORY = "chroma_db_wms"
 
@@ -176,23 +177,22 @@ class WMSChatbot:
         return processed_faqs
     def _update_user_history(self, session_id: str, user_id: str):
             """
-            Updates the user's history list by moving the current session_id to the top.
-            This handles both creating new entries and reordering existing ones.
+            Updates the user's history list by moving the current session_id to the top
+            and updating its "last modified" timestamp.
             """
             try:
                 user_history_list_key = f"user_sessions:{user_id}"
-                # Remove any existing occurrences of the session_id from the list.
-                # LREM list 0 "value" removes all elements equal to "value".
+                # Atomically remove any existing instance and push it to the top.
                 self.redis_client.lrem(user_history_list_key, 0, session_id)
-                
-                # Push the session_id to the front of the list, making it the most recent.
                 self.redis_client.lpush(user_history_list_key, session_id)
-                
-                # Trim the list to keep it at a manageable size.
                 self.redis_client.ltrim(user_history_list_key, 0, 49)
+
+                # --- NEW: Update the "last modified" timestamp for this session ---
+                self.redis_client.hset("sessions:last_updated", session_id, datetime.now(timezone.utc).isoformat())
+
             except Exception as e:
                 print(f"Error updating user history in Redis: {e}")
-
+                
     def add_single_faq(self, question: str, answer: str) -> Dict[str, Any]:
         """
         Adds a single new FAQ to the vector store.
