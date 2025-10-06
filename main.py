@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 import redis
 import yaml
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Union, Dict, AsyncGenerator, List, Optional
 from io import StringIO
 from fastapi import FastAPI, HTTPException, Depends, status, Body, UploadFile, File, Query
@@ -20,6 +20,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from rag_pipeline import WMSChatbot
 from user_db import users_db, pwd_context
 from langchain_core.messages import BaseMessage
+
 # Load environment variables from your .env file
 load_dotenv()
 
@@ -355,11 +356,8 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
         user_history_key = f"user_sessions:{user_id}"
         start = (page - 1) * size
         end = start + size - 1
-
-        # Get a "page" of session IDs from the user's list
         session_ids = [sid.decode('utf-8') for sid in r.lrange(user_history_key, start, end)]
 
-        # Check if there are more pages
         total_sessions = r.llen(user_history_key)
         has_more = total_sessions > (end + 1)
 
@@ -367,11 +365,17 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
         for sid in session_ids:
             history = wms_bot.get_session_history(sid)
             if history.messages:
-                # Use the first user message as the title
                 first_human_message = next((msg for msg in history.messages if msg.type == 'human'), None)
                 title = first_human_message.content if first_human_message else "Chat"
-                # Get timestamp from the first message
-                timestamp = history.messages[0].additional_kwargs.get('timestamp', datetime.now())
+                
+                try:
+                    timestamp_ms = int(sid.split('_')[1])
+                    # Create a timezone-aware datetime object in UTC
+                    timestamp = datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
+                except (IndexError, ValueError):
+                    # Fallback should also be timezone-aware
+                    timestamp = datetime.now(timezone.utc)
+                
                 chats.append(HistoryItem(session_id=sid, title=title, timestamp=timestamp))
 
         return HistoryListResponse(chats=chats, has_more=has_more)
@@ -379,7 +383,7 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
     except Exception as e:
         logging.error(f"Error retrieving history list for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve history list.")
-    
+        
 @app.get("/history/{session_id}", response_model=ConversationHistory, tags=["Chat"])
 def get_chat_history(session_id: str):
     """Retrieves the full message history for a given session_id from Redis."""
