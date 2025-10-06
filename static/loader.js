@@ -300,7 +300,7 @@ const widgetCSS = `
             sessionId = localStorage.getItem('holibot_session_id');
             // If no session ID is found (e.g., first visit), create a new one
             if (!sessionId) {
-                sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 // Store the new session ID in local storage for persistence
                 localStorage.setItem('holibot_session_id', sessionId);
             }
@@ -509,7 +509,7 @@ const widgetCSS = `
         const startNewConversation = () => {
             historyView.classList.remove('open');
             // --- MODIFIED: Generate a new session ID and save it to local storage ---
-            sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             localStorage.setItem('holibot_session_id', sessionId);
             
             currentMessages = [];
