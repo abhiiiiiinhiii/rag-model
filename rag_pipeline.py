@@ -344,20 +344,6 @@ class WMSChatbot:
         )
     
     async def ask_stream(self, query: str, client_id: str, session_id: str, user_id: str, llm: ChatGoogleGenerativeAI, decomposition_llm: ChatGoogleGenerativeAI) -> AsyncGenerator[str, None]:
-        try:
-            redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-            r = redis.from_url(redis_url)
-            # Check if this session is new by seeing if it has any messages yet
-            history_key = f"message_store:{session_id}"
-            if not r.exists(history_key):
-                # This is the first message. Add the session_id to the user's list.
-                user_history_key = f"user_sessions:{user_id}"
-                r.lpush(user_history_key, session_id)
-                # Optional: Keep only the last 50 sessions to prevent the list from growing indefinitely
-                r.ltrim(user_history_key, 0, 49)
-        except Exception as e:
-            # Log the error but don't block the chat flow
-            print(f"Error linking session to user in Redis: {e}")
             
         faq_retriever = self.faq_vectorstore.as_retriever(search_kwargs={'k': 4})
         candidate_faqs = faq_retriever.invoke(query)
@@ -424,7 +410,21 @@ class WMSChatbot:
         
         if suggestion_questions:
             yield f"SUGGESTIONS::{json.dumps(suggestion_questions)}"
-
+        try:
+            redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+            r = redis.from_url(redis_url)
+            # Check if this session is new by seeing if it has any messages yet
+            history_key = f"message_store:{session_id}"
+            if not r.exists(history_key):
+                # This is the first message. Add the session_id to the user's list.
+                user_history_key = f"user_sessions:{user_id}"
+                r.lpush(user_history_key, session_id)
+                # Optional: Keep only the last 50 sessions to prevent the list from growing indefinitely
+                r.ltrim(user_history_key, 0, 49)
+        except Exception as e:
+            # Log the error but don't block the chat flow
+            print(f"Error linking session to user in Redis: {e}")
+        
     def ask_error_solution(self, query: str, llm: ChatGoogleGenerativeAI):
         error_solution_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a technical analyst. Based on the CONTEXT and the user's QUESTION, generate a JSON object with "answer" and "confidence_score" keys.
