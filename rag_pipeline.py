@@ -361,6 +361,20 @@ class WMSChatbot:
             RERANKER_THRESHOLD = 0.99 
             if best_score > RERANKER_THRESHOLD:
                 faq_answer = best_doc.metadata.get("faq_answer", "Sorry, the cached answer is missing.")
+                history = self.get_session_history(session_id)
+                history.add_user_message(query)
+                history.add_ai_message(faq_answer)
+                
+                # Manually link this new session to the user's history list
+                try:
+                    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+                    r = redis.from_url(redis_url)
+                    # A new FAQ session will have 2 messages (user/ai pair).
+                    if r.llen(f"message_store:{session_id}") <= 2:
+                        r.lpush(f"user_sessions:{user_id}", session_id)
+                        r.ltrim(f"user_sessions:{user_id}", 0, 49)
+                except Exception as e:
+                    print(f"Error linking FAQ session to user in Redis: {e}")
                 yield faq_answer
                 
                 final_suggestions = [q for q in suggestion_questions if q != best_doc.page_content]

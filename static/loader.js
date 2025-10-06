@@ -649,8 +649,6 @@ const widgetCSS = `
             const suggestionBtn = e.target.closest('.suggestion-bubble');
             const copyButton = e.target.closest('.copy-btn');
             if (suggestionBtn) {
-                const promptText = suggestionBtn.dataset.prompt;
-                appendMessage('user', promptText); // <-- ADD THIS LINE
                 sendMessage(suggestionBtn.dataset.prompt);
                 const groupId = suggestionBtn.dataset.groupId;
                 if (groupId) {
