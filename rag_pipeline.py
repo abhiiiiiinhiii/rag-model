@@ -68,6 +68,8 @@ class WMSChatbot:
             persist_directory=f"{PERSIST_DIRECTORY}_faq",
             embedding_function=self.embedding_model
         )
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+        self.redis_client = redis.from_url(redis_url)
         self.query_decomposition_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert at query understanding. Your task is to analyze a user's question and the conversation history, then generate a list of simple, self-contained search queries that are necessary to answer the user's request.
             
@@ -172,6 +174,23 @@ class WMSChatbot:
                     "answer": results['metadatas'][i].get('faq_answer', '')
                 })
         return processed_faqs
+    def _link_session_to_user_history_if_new(self, session_id: str, user_id: str):
+            """
+            Atomically links a session_id to a user's history list.
+            Uses a Redis SET to efficiently track sessions that have already been linked,
+            guaranteeing that a session is only ever added to the list once.
+            """
+            try:
+                # SADD returns 1 if the item was new and added, 0 if it already existed.
+                # This is an atomic and efficient way to check for first-time occurrence.
+                if self.redis_client.sadd(f"user_linked_sessions:{user_id}", session_id):
+                    # This is the first time we've seen this session_id, so add it
+                    # to the user's list of conversations.
+                    user_history_list_key = f"user_sessions:{user_id}"
+                    self.redis_client.lpush(user_history_list_key, session_id)
+                    self.redis_client.ltrim(user_history_list_key, 0, 49) # Keep list size manageable
+            except Exception as e:
+                print(f"Error linking session to user in Redis: {e}")
 
     def add_single_faq(self, question: str, answer: str) -> Dict[str, Any]:
         """
@@ -343,8 +362,7 @@ class WMSChatbot:
             config={"configurable": {"session_id": session_id}}
         )
     
-    async def ask_stream(self, query: str, client_id: str, session_id: str, user_id: str, llm: ChatGoogleGenerativeAI, decomposition_llm: ChatGoogleGenerativeAI) -> AsyncGenerator[str, None]:
-            
+    async def ask_stream(self, query: str, client_id: str, session_id: str, user_id: str, llm: ChatGoogleGenerativeAI, decomposition_llm: ChatGoogleGenerativeAI, is_welcome_suggestion: bool = False) -> AsyncGenerator[str, None]:
         faq_retriever = self.faq_vectorstore.as_retriever(search_kwargs={'k': 4})
         candidate_faqs = faq_retriever.invoke(query)
         suggestion_questions = [doc.page_content for doc in candidate_faqs]
@@ -355,26 +373,19 @@ class WMSChatbot:
             scores = reranker.model.predict(doc_query_pairs)
             doc_scores = list(zip(candidate_faqs, scores))
             doc_scores.sort(key=lambda x: x[1], reverse=True)
-            
             best_doc, best_score = doc_scores[0]
             
             RERANKER_THRESHOLD = 0.99 
             if best_score > RERANKER_THRESHOLD:
                 faq_answer = best_doc.metadata.get("faq_answer", "Sorry, the cached answer is missing.")
-                history = self.get_session_history(session_id)
-                history.add_user_message(query)
-                history.add_ai_message(faq_answer)
                 
-                # Manually link this new session to the user's history list
-                try:
-                    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-                    r = redis.from_url(redis_url)
-                    # A new FAQ session will have 2 messages (user/ai pair).
-                    if r.llen(f"message_store:{session_id}") <= 2:
-                        r.lpush(f"user_sessions:{user_id}", session_id)
-                        r.ltrim(f"user_sessions:{user_id}", 0, 49)
-                except Exception as e:
-                    print(f"Error linking FAQ session to user in Redis: {e}")
+                if not is_welcome_suggestion:
+                    history = self.get_session_history(session_id)
+                    history.add_user_message(query)
+                    history.add_ai_message(faq_answer)
+                    # This now uses the new, robust linking method
+                    self._link_session_to_user_history_if_new(session_id, user_id)
+
                 yield faq_answer
                 
                 final_suggestions = [q for q in suggestion_questions if q != best_doc.page_content]
@@ -390,12 +401,7 @@ class WMSChatbot:
         decomposition_chain = self.query_decomposition_prompt | decomposition_llm | JsonOutputParser()
 
         def retrieve_and_rerank_docs(input_dict: dict) -> str:
-            decomposed_queries_data = input_dict.get("decomposed_queries")
-            if isinstance(decomposed_queries_data, dict) and 'queries' in decomposed_queries_data:
-                sub_queries = decomposed_queries_data['queries']
-            else:
-                sub_queries = [input_dict["question"]]
-
+            sub_queries = input_dict.get("decomposed_queries", {}).get("queries", [input_dict["question"]])
             final_docs = []
             for q in sub_queries:
                 retrieved_docs = base_retriever.invoke(q)
@@ -424,21 +430,10 @@ class WMSChatbot:
         
         if suggestion_questions:
             yield f"SUGGESTIONS::{json.dumps(suggestion_questions)}"
-        try:
-            redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-            r = redis.from_url(redis_url)
-            # Check if this session is new by seeing if it has any messages yet
-            history_key = f"message_store:{session_id}"
-            if r.llen(history_key) <= 2:
-                # This is the first message. Add the session_id to the user's list.
-                user_history_key = f"user_sessions:{user_id}"
-                r.lpush(user_history_key, session_id)
-                # Optional: Keep only the last 50 sessions to prevent the list from growing indefinitely
-                r.ltrim(user_history_key, 0, 49)
-        except Exception as e:
-            # Log the error but don't block the chat flow
-            print(f"Error linking session to user in Redis: {e}")
-        
+
+        if not is_welcome_suggestion:
+            # This now uses the new, robust linking method
+            self._link_session_to_user_history_if_new(session_id, user_id)
     def ask_error_solution(self, query: str, llm: ChatGoogleGenerativeAI):
         error_solution_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a technical analyst. Based on the CONTEXT and the user's QUESTION, generate a JSON object with "answer" and "confidence_score" keys.
