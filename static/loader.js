@@ -1,4 +1,4 @@
-// static/loader.js - v2 (Complete and Self-Contained)
+// static/loader.js - v3 (Session Persistence Fix)
 const CHATBOT_SERVER_URL = 'http://15.207.247.255:8000';
 const widgetHTML = `
     <div id="chat-toggle-button">
@@ -292,7 +292,20 @@ const widgetCSS = `
         const WMS_API_BASE_URL = 'http://api.your-wms.com';
         const userId = 'holisol_internal_user_01'; // Hardcoded user ID for now
         let historyPage = 1; // For pagination
-        let sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // --- NEW: Session Management ---
+        let sessionId;
+        const initializeSession = () => {
+            // Try to get an existing session ID from the browser's local storage
+            sessionId = localStorage.getItem('holibot_session_id');
+            // If no session ID is found (e.g., first visit), create a new one
+            if (!sessionId) {
+                sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                // Store the new session ID in local storage for persistence
+                localStorage.setItem('holibot_session_id', sessionId);
+            }
+        };
+
         let currentMessages = [];
         const CLIENT_ID = "modicare";
 
@@ -364,6 +377,7 @@ const widgetCSS = `
                 }
 
                 sessionId = id;
+                localStorage.setItem('holibot_session_id', sessionId); // Set the current session as active
                 currentMessages = data.messages;
 
                 chatBox.innerHTML = '';
@@ -494,7 +508,10 @@ const widgetCSS = `
         
         const startNewConversation = () => {
             historyView.classList.remove('open');
-            sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            // --- MODIFIED: Generate a new session ID and save it to local storage ---
+            sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem('holibot_session_id', sessionId);
+            
             currentMessages = [];
             
             welcomeView.classList.remove('pills-stacked');
@@ -713,6 +730,7 @@ const widgetCSS = `
         };
 
         // --- Initial Setup ---
+        initializeSession(); // <-- NEW: Initialize the session on script load
         setupPills();
 
     }).catch(error => {
