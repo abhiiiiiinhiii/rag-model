@@ -174,23 +174,24 @@ class WMSChatbot:
                     "answer": results['metadatas'][i].get('faq_answer', '')
                 })
         return processed_faqs
-    def _link_session_to_user_history_if_new(self, session_id: str, user_id: str):
+    def _update_user_history(self, session_id: str, user_id: str):
             """
-            Atomically links a session_id to a user's history list.
-            Uses a Redis SET to efficiently track sessions that have already been linked,
-            guaranteeing that a session is only ever added to the list once.
+            Updates the user's history list by moving the current session_id to the top.
+            This handles both creating new entries and reordering existing ones.
             """
             try:
-                # SADD returns 1 if the item was new and added, 0 if it already existed.
-                # This is an atomic and efficient way to check for first-time occurrence.
-                if self.redis_client.sadd(f"user_linked_sessions:{user_id}", session_id):
-                    # This is the first time we've seen this session_id, so add it
-                    # to the user's list of conversations.
-                    user_history_list_key = f"user_sessions:{user_id}"
-                    self.redis_client.lpush(user_history_list_key, session_id)
-                    self.redis_client.ltrim(user_history_list_key, 0, 49) # Keep list size manageable
+                user_history_list_key = f"user_sessions:{user_id}"
+                # Remove any existing occurrences of the session_id from the list.
+                # LREM list 0 "value" removes all elements equal to "value".
+                self.redis_client.lrem(user_history_list_key, 0, session_id)
+                
+                # Push the session_id to the front of the list, making it the most recent.
+                self.redis_client.lpush(user_history_list_key, session_id)
+                
+                # Trim the list to keep it at a manageable size.
+                self.redis_client.ltrim(user_history_list_key, 0, 49)
             except Exception as e:
-                print(f"Error linking session to user in Redis: {e}")
+                print(f"Error updating user history in Redis: {e}")
 
     def add_single_faq(self, question: str, answer: str) -> Dict[str, Any]:
         """
@@ -383,8 +384,8 @@ class WMSChatbot:
                     history = self.get_session_history(session_id)
                     history.add_user_message(query)
                     history.add_ai_message(faq_answer)
-                    # This now uses the new, robust linking method
-                    self._link_session_to_user_history_if_new(session_id, user_id)
+                    # Use the new "move-to-top" function
+                    self._update_user_history(session_id, user_id)
 
                 yield faq_answer
                 
@@ -432,8 +433,8 @@ class WMSChatbot:
             yield f"SUGGESTIONS::{json.dumps(suggestion_questions)}"
 
         if not is_welcome_suggestion:
-            # This now uses the new, robust linking method
-            self._link_session_to_user_history_if_new(session_id, user_id)
+            # Use the new "move-to-top" function
+            self._update_user_history(session_id, user_id)
     def ask_error_solution(self, query: str, llm: ChatGoogleGenerativeAI):
         error_solution_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a technical analyst. Based on the CONTEXT and the user's QUESTION, generate a JSON object with "answer" and "confidence_score" keys.
