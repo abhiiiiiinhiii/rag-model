@@ -267,7 +267,7 @@ class WMSChatbot:
 
     def get_session_history(self, session_id: str) -> RedisChatMessageHistory:
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-        return RedisChatMessageHistory(session_id=session_id, url=redis_url)
+        return RedisChatMessageHistory(session_id=session_id, redis_url=redis_url)
 
     def ingest_documents(self, source_folder: str) -> Dict[str, int]:
         ingestion_path = os.path.join(MANUALS_PATH, source_folder)
