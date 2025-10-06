@@ -429,7 +429,7 @@ class WMSChatbot:
             r = redis.from_url(redis_url)
             # Check if this session is new by seeing if it has any messages yet
             history_key = f"message_store:{session_id}"
-            if r.llen(history_key) == 1:
+            if r.llen(history_key) <= 2:
                 # This is the first message. Add the session_id to the user's list.
                 user_history_key = f"user_sessions:{user_id}"
                 r.lpush(user_history_key, session_id)
