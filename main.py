@@ -90,7 +90,9 @@ app.add_middleware(
 LOG_FILE = 'chat_history.csv'
 LOG_HEADERS = ['Timestamp', 'ClientID', 'Query', 'Answer']
 CONFIDENCE_THRESHOLD = 85
-
+# ADD THIS NEW FUNCTION
+FEEDBACK_LOG_FILE = 'feedback_log.csv'
+FEEDBACK_LOG_HEADERS = ['Timestamp', 'SessionID', 'Rating', 'Comment']
 ACTIVITY_LOG_FILE = 'activity_log.csv'
 ACTIVITY_LOG_HEADERS = ['Timestamp', 'User', 'Action', 'Description']
 
@@ -206,9 +208,7 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# ADD THIS NEW FUNCTION
-FEEDBACK_LOG_FILE = 'feedback_log.csv'
-FEEDBACK_LOG_HEADERS = ['Timestamp', 'SessionID', 'Rating', 'Comment']
+
 
 def log_feedback(session_id: str, rating: int, comment: str):
     """Writes feedback to a CSV file."""
