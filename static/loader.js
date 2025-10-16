@@ -73,6 +73,28 @@ const widgetHTML = `
                 </div>
             </div>
         </div>
+        <div id="feedback-modal-overlay">
+    <div id="feedback-modal-content">
+        <div id="feedback-form-view">
+            <span id="feedback-close-button">&times;</span>
+            <h2>How was your experience?</h2>
+            <p>Please rate your chat session.</p>
+            <div class="star-rating">
+                <span class="star" data-value="1">&#9733;</span>
+                <span class="star" data-value="2">&#9733;</span>
+                <span class="star" data-value="3">&#9733;</span>
+                <span class="star" data-value="4">&#9733;</span>
+                <span class="star" data-value="5">&#9733;</span>
+            </div>
+            <textarea id="feedback-comment" placeholder="Tell us more (optional)..."></textarea>
+            <button id="submit-feedback-btn">Submit Feedback</button>
+        </div>
+        <div id="thank-you-view" style="display: none;">
+            <h2>Thank you!</h2>
+            <p>Your feedback has been received.</p>
+        </div>
+    </div>
+</div>
     </div>
 `;
 
@@ -201,6 +223,77 @@ const widgetCSS = `
     transition: background-color 0.2s, color 0.2s;
 }
 #load-more-button:hover { background-color: #e6f2ff; }
+/* === [NEW] FEEDBACK MODAL CSS === */
+#feedback-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Ensure it's on top */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+#feedback-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+#feedback-modal-content {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+#feedback-modal-overlay.active #feedback-modal-content {
+    transform: scale(1);
+}
+#feedback-close-button {
+    position: absolute; top: 5px; right: 12px;
+    font-size: 24px; color: #aaa; cursor: pointer;
+    transition: color 0.2s;
+}
+#feedback-close-button:hover { color: #333; }
+#feedback-modal-content h2 {
+    margin-top: 0; margin-bottom: 8px; font-size: 18px; color: #333;
+}
+#feedback-modal-content p {
+    color: #666; font-size: 14px; margin-bottom: 15px;
+}
+.star-rating { margin-bottom: 15px; }
+.star {
+    font-size: 2.2rem; color: #ddd; cursor: pointer;
+    transition: color 0.2s, transform 0.1s;
+    display: inline-block;
+}
+.star:hover { transform: scale(1.2); }
+.star-rating:hover .star { color: #ffc107; }
+.star-rating .star:hover ~ .star { color: #ddd; }
+.star-rating .star.selected,
+.star-rating .star.selected ~ .star { color: #ddd; }
+.star-rating .star.selected { color: #ffc107; }
+#feedback-comment {
+    width: 100%; height: 70px; margin-bottom: 15px;
+    padding: 8px; border: 1px solid #ccc; border-radius: 5px;
+    font-size: 14px; resize: vertical; box-sizing: border-box;
+}
+#submit-feedback-btn {
+    background-color: #007bff; color: white; border: none;
+    padding: 10px 20px; border-radius: 5px; cursor: pointer;
+    font-size: 14px; width: 100%; transition: background-color 0.3s;
+}
+#submit-feedback-btn:hover { background-color: #0056b3; }
+#thank-you-view h2 { color: #28a745; }
 `;
 
 // --- INJECTION AND APPLICATION LOGIC ---
@@ -276,6 +369,15 @@ const widgetCSS = `
         const historyList = shadowRoot.querySelector('#history-list');
         const loadMoreContainer = shadowRoot.querySelector('#load-more-container');
         const loadMoreButton = shadowRoot.querySelector('#load-more-button');
+                // --- [NEW] Feedback Modal Elements ---
+        const feedbackModalOverlay = shadowRoot.querySelector('#feedback-modal-overlay');
+        const feedbackCloseButton = shadowRoot.querySelector('#feedback-close-button');
+        const feedbackStars = shadowRoot.querySelectorAll('.star');
+        const submitFeedbackBtn = shadowRoot.querySelector('#submit-feedback-btn');
+        const feedbackComment = shadowRoot.querySelector('#feedback-comment');
+        const feedbackFormView = shadowRoot.querySelector('#feedback-form-view');
+        const thankYouView = shadowRoot.querySelector('#thank-you-view');
+        let currentRating = 0;
 
         // --- Pill Dropdown Data ---
         const categories = {
@@ -644,10 +746,43 @@ const widgetCSS = `
             }
             manageActiveStates();
         };
+        
+                // --- [NEW] Feedback Functionality ---
+        const openFeedbackModal = () => {
+            feedbackModalOverlay.classList.add('active');
+        };
 
+        const closeFeedbackModal = (andCloseWidget = false) => {
+            feedbackModalOverlay.classList.remove('active');
+            // Wait for animation before resetting and potentially closing widget
+            setTimeout(() => {
+                resetFeedbackForm();
+                if (andCloseWidget) {
+                    toggleWidget(false);
+                }
+            }, 300);
+        };
+
+        const resetFeedbackForm = () => {
+            currentRating = 0;
+            updateStarSelection(0);
+            feedbackComment.value = '';
+            thankYouView.style.display = 'none';
+            feedbackFormView.style.display = 'block';
+        };
+
+        const updateStarSelection = (rating) => {
+            feedbackStars.forEach(star => {
+                if (parseInt(star.getAttribute('data-value')) <= rating) {
+                    star.classList.add('selected');
+                } else {
+                    star.classList.remove('selected');
+                }
+            });
+        };
         // --- Event Listeners ---
         toggleButton.addEventListener('click', () => toggleWidget(true));
-        minimizeButton.addEventListener('click', () => toggleWidget(false));
+        minimizeButton.addEventListener('click', () => openFeedbackModal());
         chatInput.addEventListener('input', () => { toggleSendButton(); autoResizeInput(); });
         chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendButton.click(); } });
         sendButton.addEventListener('click', () => sendMessage());             
@@ -702,7 +837,58 @@ const widgetCSS = `
             historyPage++;
             fetchAndRenderHistory(historyPage);
         });
-        
+
+                // --- [NEW] Feedback Event Listeners ---
+        feedbackCloseButton.addEventListener('click', () => closeFeedbackModal(true));
+        feedbackModalOverlay.addEventListener('click', (event) => {
+            if (event.target === feedbackModalOverlay) {
+                closeFeedbackModal(true);
+            }
+        });
+
+        feedbackStars.forEach(star => {
+            star.addEventListener('click', () => {
+                currentRating = parseInt(star.getAttribute('data-value'));
+                updateStarSelection(currentRating);
+            });
+        });
+
+        submitFeedbackBtn.addEventListener('click', () => {
+            const comment = feedbackComment.value.trim();
+            if (currentRating === 0) {
+                Toastify({ text: "Please select a rating.", duration: 3000, gravity: "top", position: "center", backgroundColor: "#dc3545" }).showToast();
+                return;
+            }
+            
+            const feedbackData = {
+                sessionId: sessionId,
+                rating: currentRating,
+                comment: comment
+            };
+            
+            // --- BACKEND INTEGRATION POINT ---
+            // In a real application, you would send this data to your server.
+            // Example using fetch:
+            
+            fetch(`${API_URL}/feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(feedbackData)
+            })
+            .then(response => {
+                if (!response.ok) console.error("Failed to submit feedback.");
+            })
+            .catch(error => console.error("Error submitting feedback:", error));
+            
+            // Show thank you message
+            feedbackFormView.style.display = 'none';
+            thankYouView.style.display = 'block';
+
+            // Automatically close after a delay
+            setTimeout(() => {
+                closeFeedbackModal(true);
+            }, 2000);
+        });
         // Proactive Network Error Listener
         const originalFetch = window.fetch;
         window.fetch = async (...args) => {

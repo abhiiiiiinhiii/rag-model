@@ -190,6 +190,11 @@ class HistoryItem(BaseModel):
 class HistoryListResponse(BaseModel):
     chats: List[HistoryItem]
     has_more: bool
+# ADD THIS NEW MODEL
+class FeedbackRequest(BaseModel):
+    sessionId: str
+    rating: int
+    comment: Optional[str] = None
 
 # --- Utility Functions for Auth ---
 def get_user(db, username: str):
@@ -201,6 +206,23 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+# ADD THIS NEW FUNCTION
+FEEDBACK_LOG_FILE = 'feedback_log.csv'
+FEEDBACK_LOG_HEADERS = ['Timestamp', 'SessionID', 'Rating', 'Comment']
+
+def log_feedback(session_id: str, rating: int, comment: str):
+    """Writes feedback to a CSV file."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    row = [timestamp, session_id, rating, comment]
+    file_exists = os.path.isfile(FEEDBACK_LOG_FILE)
+    try:
+        with open(FEEDBACK_LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+            if not file_exists:
+                writer.writerow(FEEDBACK_LOG_HEADERS)
+            writer.writerow(row)
+    except Exception as e:
+        logging.error(f"Failed to log feedback: {e}")
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -319,6 +341,16 @@ async def ingest_faqs(req: IngestFAQRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ADD THIS NEW ENDPOINT
+@app.post("/feedback", status_code=status.HTTP_200_OK)
+async def receive_feedback(req: FeedbackRequest):
+    """Receives and logs user feedback from the chat widget."""
+    try:
+        log_feedback(req.sessionId, req.rating, req.comment)
+        return {"status": "success", "message": "Feedback received"}
+    except Exception as e:
+        logging.error(f"Error handling feedback: {e}")
+        raise HTTPException(status_code=500, detail="Could not process feedback.")
 # --- API ENDPOINTS FOR CONTROL PANEL ---
 
 # --- Auth Endpoints ---
