@@ -28,6 +28,7 @@ services:
       - ./chroma_db_wms_faq:/app/chroma_db_wms_faq
       - ./chat_history.csv:/app/chat_history.csv
       - ./huggingface_cache:/root/.cache/huggingface
+      - ./feedback_log.csv:/app/feedback_log.csv
     depends_on:
       - redis
 
@@ -41,6 +42,5 @@ services:
     volumes:
       - redis_data:/data
 
-# NEW: Define the named volume at the end of the file
 volumes:
   redis_data:
