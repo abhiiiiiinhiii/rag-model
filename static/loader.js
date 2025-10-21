@@ -279,8 +279,7 @@ const widgetCSS = `
 .star:hover { transform: scale(1.2); }
 .star-rating:hover .star { color: #ffc107; }
 .star-rating .star:hover ~ .star { color: #ddd; }
-.star-rating .star.selected,
-.star-rating .star.selected ~ .star { color: #ddd; }
+/* This is the new, correct rule */
 .star-rating .star.selected { color: #ffc107; }
 #feedback-comment {
     width: 100%; height: 70px; margin-bottom: 15px;
