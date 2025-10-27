@@ -781,7 +781,18 @@ const widgetCSS = `
         };
         // --- Event Listeners ---
         toggleButton.addEventListener('click', () => toggleWidget(true));
-        minimizeButton.addEventListener('click', () => openFeedbackModal());
+       minimizeButton.addEventListener('click', () => {
+            // Check if any messages exist in the current chat
+            const hasChatted = currentMessages.length > 0;
+
+            if (hasChatted) {
+                // If they have chatted, open the feedback modal.
+                openFeedbackModal();
+            } else {
+                // If the chat is empty, just close the widget without feedback.
+                toggleWidget(false);
+            }
+        });
         chatInput.addEventListener('input', () => { toggleSendButton(); autoResizeInput(); });
         chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendButton.click(); } });
         sendButton.addEventListener('click', () => sendMessage());             
