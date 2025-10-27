@@ -111,6 +111,9 @@
                  <a href="#" id="nav-activity" class="sidebar-link flex items-center px-4 py-3 mt-2 rounded-lg text-gray-700">
                     <i class="fas fa-history w-6 text-center text-gray-400"></i><span class="ml-3">Activity Log</span>
                 </a>
+                <a href="#" id="nav-reports" class="sidebar-link flex items-center px-4 py-3 mt-2 rounded-lg text-gray-700">
+                    <i class="fas fa-file-download w-6 text-center text-gray-400"></i><span class="ml-3">Reports</span>
+                </a>
             </nav>
             <div class="p-4 border-t border-gray-200">
                 <div class="flex items-center">
@@ -152,38 +155,7 @@
                         </div>
                         <ul id="unanswered-list" class="space-y-3 mb-6"></ul>
                         <!-- NEW: Export section for unanswered questions -->
-                        <div class="border-t border-gray-200 pt-4">
-                            <h4 class="text-md font-semibold mb-3">Export Unanswered</h4>
-                            <div class="space-y-3">
-                                <div>
-                                    <label for="start-date" class="text-sm font-medium text-gray-700">Start Date</label>
-                                    <input type="date" id="start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                                </div>
-                                <div>
-                                    <label for="end-date" class="text-sm font-medium text-gray-700">End Date</label>
-                                    <input type="date" id="end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                                </div>
-                                <button id="export-unanswered-btn" class="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
-                                    <i class="fas fa-download mr-2"></i><span>Export CSV</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="border-t border-gray-200 pt-4 mt-6">
-                    <h4 class="text-md font-semibold mb-3">Export Feedback</h4>
-                    <div class="space-y-3">
-                        <div>
-                            <label for="feedback-start-date" class="text-sm font-medium text-gray-700">Start Date</label>
-                            <input type="date" id="feedback-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                        </div>
-                        <div>
-                            <label for="feedback-end-date" class="text-sm font-medium text-gray-700">End Date</label>
-                            <input type="date" id="feedback-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                        </div>
-                        <button id="export-feedback-btn" class="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
-                            <i class="fas fa-download mr-2"></i><span>Export CSV</span>
-                        </button>
-                    </div>
-                </div>   
+                           
                     </div>
                 </div>
             </div>
@@ -231,6 +203,35 @@
                 <div class="bg-white rounded-xl border border-gray-200">
                     <div id="activity-list" class="divide-y divide-gray-200">
                         <!-- Activity items will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div id="reports-view" class="hidden">
+                <header class="mb-8">
+                    <h2 class="text-4xl font-bold text-gray-900">Download Reports</h2>
+                    <p class="text-gray-500 mt-1">Select a report type and date range to download.</p>
+                </header>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 max-w-2xl">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="report-type-select" class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+                            <select id="report-type-select" class="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm transition">
+                                <option value="">-- Select a report --</option>
+                                <option value="unanswered">Unanswered Questions</option>
+                                <option value="feedback">Feedback Log</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="report-start-date" class="text-sm font-medium text-gray-700">Start Date</label>
+                            <input type="date" id="report-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
+                        <div>
+                            <label for="report-end-date" class="text-sm font-medium text-gray-700">End Date</label>
+                            <input type="date" id="report-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
+                        <button id="download-report-btn" class="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                            <i class="fas fa-download mr-2"></i><span>Download Report</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -293,10 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const navKb = document.getElementById('nav-kb');
     const navFaq = document.getElementById('nav-faq');
     const navActivity = document.getElementById('nav-activity');
+    const navReports = document.getElementById('nav-reports');                
     const dashboardView = document.getElementById('dashboard-view');
     const kbView = document.getElementById('kb-view');
     const faqView = document.getElementById('faq-view');
     const activityView = document.getElementById('activity-view');
+    const reportsView = document.getElementById('reports-view');
     
     // --- API HELPER ---
     const apiFetch = async (endpoint, options = {}) => {
@@ -320,13 +323,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- UI UTILITY FUNCTIONS ---
     const switchView = (view) => {
         appState.currentView = view;
-        [dashboardView, kbView, faqView, activityView].forEach(v => v.classList.add('hidden'));
-        [navDashboard, navKb, navFaq, navActivity].forEach(n => n.classList.remove('active'));
+        [dashboardView, kbView, faqView, activityView, reportsView].forEach(v => v.classList.add('hidden')); // <-- ADD reportsView
+        [navDashboard, navKb, navFaq, navActivity, navReports].forEach(n => n.classList.remove('active')); // <-- ADD navReports
         const viewMap = {
             dashboard: { viewEl: dashboardView, navEl: navDashboard, dataKey: 'analytics', fetchType: 'analytics', renderFn: renderDashboard },
             kb: { viewEl: kbView, navEl: navKb, dataKey: 'kbData', fetchType: 'kb', renderFn: renderKbList },
             faq: { viewEl: faqView, navEl: navFaq, dataKey: 'faqData', fetchType: 'faq', renderFn: renderFaqList },
             activity: { viewEl: activityView, navEl: navActivity, dataKey: 'activityLog', fetchType: 'activity', renderFn: renderActivityLog },
+            reports: { viewEl: reportsView, navEl: navReports, dataKey: 'reportsData', fetchType: 'none', renderFn: () => {} } // <-- ADD THIS
         };
         const selected = viewMap[view];
         if (selected) {
@@ -770,6 +774,55 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { showToast(error.message, true); }
         finally { toggleButtonSpinner(button, false); }
     };
+    const handleDownloadReport = async () => {
+        const button = document.getElementById('download-report-btn');
+        const reportType = document.getElementById('report-type-select').value;
+        const startDate = document.getElementById('report-start-date').value;
+        const endDate = document.getElementById('report-end-date').value;
+
+        if (!reportType || !startDate || !endDate) {
+            showToast('Please select a report type, start date, and end date.', true);
+            return;
+        }
+
+        let endpoint = '';
+        let filename = '';
+        if (reportType === 'unanswered') {
+            endpoint = `/admin/export_unanswered?start_date=${startDate}&end_date=${endDate}`;
+            filename = `unanswered_questions_${startDate}_to_${endDate}.csv`;
+        } else if (reportType === 'feedback') {
+            endpoint = `/admin/export_feedback?start_date=${startDate}&end_date=${endDate}`;
+            filename = `feedback_export_${startDate}_to_${endDate}.csv`;
+        } else {
+            showToast('Invalid report type selected.', true);
+            return;
+        }
+
+        toggleButtonSpinner(button, true);
+        try {
+            const token = sessionStorage.getItem('accessToken');
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Failed to export data.' }));
+                throw new Error(errorData.detail);
+            }
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            showToast('Export successful!');
+        } catch (error) {
+            showToast(error.message, true);
+        } finally {
+            toggleButtonSpinner(button, false);
+        }
+    };
 
     const handleExportUnanswered = async () => {
         const button = document.getElementById('export-unanswered-btn');
@@ -863,6 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navKb.addEventListener('click', (e) => { e.preventDefault(); switchView('kb'); });
     navFaq.addEventListener('click', (e) => { e.preventDefault(); switchView('faq'); });
     navActivity.addEventListener('click', (e) => { e.preventDefault(); switchView('activity'); });
+    navReports.addEventListener('click', (e) => { e.preventDefault(); switchView('reports'); });
     document.getElementById('add-kb-form').addEventListener('submit', handleAddKb);
     document.getElementById('add-faq-form').addEventListener('submit', handleAddFaq);
     document.getElementById('kb-search').addEventListener('input', () => renderKbList());
@@ -872,8 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('faq-export-btn').addEventListener('click', handleFaqExport);
     document.getElementById('faq-import-file').addEventListener('change', handleFaqImport);
 
-    document.getElementById('export-unanswered-btn').addEventListener('click', handleExportUnanswered);
-    document.getElementById('export-feedback-btn').addEventListener('click', handleExportFeedback);
+  
     document.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-btn');
         const deleteBtn = e.target.closest('.delete-btn');
@@ -887,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('delete-modal-confirm').addEventListener('click', handleConfirmDelete);
     document.getElementById('delete-modal-cancel').addEventListener('click', () => closeModal('delete-modal'));
-    
+    document.getElementById('download-report-btn').addEventListener('click', handleDownloadReport);
     document.querySelectorAll('button').forEach(button => {
         const text = button.querySelector('span');
         const icon = button.querySelector('i');
