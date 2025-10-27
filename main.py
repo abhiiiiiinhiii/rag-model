@@ -103,7 +103,7 @@ def log_conversation(client_id: str, query: str, answer: str):
     try:
         with open(LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-            if not file_exists:
+            if not file_exists or os.path.getsize(LOG_FILE) == 0:
                 writer.writerow(LOG_HEADERS)
             writer.writerow(row)
     except Exception as e:
@@ -117,7 +117,7 @@ def log_admin_activity(user: 'User', action: str, description: str):
     try:
         with open(ACTIVITY_LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            if not file_exists:
+            if not file_exists or os.path.getsize(ACTIVITY_LOG_FILE) == 0:
                 writer.writerow(ACTIVITY_LOG_HEADERS)
             writer.writerow(row)
     except Exception as e:
@@ -218,7 +218,7 @@ def log_feedback(session_id: str, rating: int, comment: str):
     try:
         with open(FEEDBACK_LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-            if not file_exists:
+            if not file_exists or os.path.getsize(FEEDBACK_LOG_FILE) == 0:
                 writer.writerow(FEEDBACK_LOG_HEADERS)
             writer.writerow(row)
     except Exception as e:
