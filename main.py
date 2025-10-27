@@ -567,6 +567,33 @@ def get_analytics():
         return {"totalInteractions": "Error", "unanswered": "Error", "kbDocs": "Error", "faqs": "Error", "usage": {"labels": [], "data": []}, "unansweredList": ["Error reading log file"]}
 
 # --- NEW: Endpoint for exporting unanswered questions ---
+@app.get("/admin/export_feedback", tags=["Admin"], dependencies=[Depends(get_current_active_user)])
+def export_feedback_log(start_date: Optional[str] = Query(None), end_date: Optional[str] = Query(None)):
+    if not os.path.exists(FEEDBACK_LOG_FILE):
+        raise HTTPException(status_code=404, detail="Feedback log file not found.")
+
+    try:
+        df = pd.read_csv(FEEDBACK_LOG_FILE, on_bad_lines='skip')
+        if df.empty:
+            return StreamingResponse(StringIO(""), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=feedback_export.csv"})
+
+        # Convert timestamp for filtering
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
+        if start_date:
+            df = df[df['Timestamp'] >= pd.to_datetime(start_date)]
+        if end_date:
+            df = df[df['Timestamp'] <= pd.to_datetime(end_date).replace(hour=23, minute=59, second=59)]
+
+        output = StringIO()
+        df.to_csv(output, index=False)
+        output.seek(0)
+
+        return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=feedback_export_{start_date}_to_{end_date}.csv"})
+
+    except Exception as e:
+        logging.error(f"Error exporting feedback log: {e}")
+        raise HTTPException(status_code=500, detail="Failed to export data.")
 @app.get("/admin/export_unanswered", tags=["Admin"], dependencies=[Depends(get_current_active_user)])
 def export_unanswered_questions(start_date: Optional[str] = Query(None), end_date: Optional[str] = Query(None)):
     if not os.path.exists(LOG_FILE):

@@ -168,6 +168,22 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="border-t border-gray-200 pt-4 mt-6">
+                    <h4 class="text-md font-semibold mb-3">Export Feedback</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="feedback-start-date" class="text-sm font-medium text-gray-700">Start Date</label>
+                            <input type="date" id="feedback-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
+                        <div>
+                            <label for="feedback-end-date" class="text-sm font-medium text-gray-700">End Date</label>
+                            <input type="date" id="feedback-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
+                        <button id="export-feedback-btn" class="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                            <i class="fas fa-download mr-2"></i><span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>   
                     </div>
                 </div>
             </div>
@@ -789,6 +805,41 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleButtonSpinner(button, false);
         }
     };
+    const handleExportFeedback = async () => {
+    const button = document.getElementById('export-feedback-btn');
+    const startDate = document.getElementById('feedback-start-date').value;
+    const endDate = document.getElementById('feedback-end-date').value;
+
+    if (!startDate || !endDate) {
+        showToast('Please select both start and an end date.', true);
+        return;
+    }
+
+    toggleButtonSpinner(button, true);
+    try {
+        const token = sessionStorage.getItem('accessToken');
+        const response = await fetch(`${API_BASE_URL}/admin/export_feedback?start_date=${startDate}&end_date=${endDate}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Failed to export data.' }));
+            throw new Error(errorData.detail);
+        }
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `feedback_export_${startDate}_to_${endDate}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        showToast('Export successful!');
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        toggleButtonSpinner(button, false);
+    }
+};
     
     // --- INITIALIZATION ---
     const initApp = () => {
@@ -822,7 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('faq-import-file').addEventListener('change', handleFaqImport);
 
     document.getElementById('export-unanswered-btn').addEventListener('click', handleExportUnanswered);
-
+    document.getElementById('export-feedback-btn').addEventListener('click', handleExportFeedback);
     document.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-btn');
         const deleteBtn = e.target.closest('.delete-btn');
