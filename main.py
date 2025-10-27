@@ -538,34 +538,56 @@ def get_analytics():
     try:
         kb_docs_count = len(wms_bot.get_all_kb_documents())
         faqs_count = len(wms_bot.get_all_faqs())
-        if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
-            return {"totalInteractions": 0, "unanswered": 0, "kbDocs": kb_docs_count, "faqs": faqs_count, "usage": {"labels": [], "data": []}, "unansweredList": []}
-        
-        df = pd.read_csv(LOG_FILE, on_bad_lines='skip')
-        if df.empty:
-            return {"totalInteractions": 0, "unanswered": 0, "kbDocs": kb_docs_count, "faqs": faqs_count, "usage": {"labels": [], "data": []}, "unansweredList": []}
-            
-        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-        df_filtered = df[~df['Query'].str.startswith('PROACTIVE_', na=False)]
-        total_interactions = len(df_filtered)
-        unanswered_string = "I don't have that information right now"
-        unanswered_df = df_filtered[df_filtered['Answer'].str.contains(unanswered_string, na=False)]
-        unanswered_count = len(unanswered_df)
-        
-        # --- MODIFICATION: Get last 10 unanswered questions instead of top 5 frequent ---
-        unanswered_list = unanswered_df.sort_values(by='Timestamp', ascending=False).head(10)['Query'].tolist()
 
-        df_filtered['Date'] = df_filtered['Timestamp'].dt.date
-        today = pd.to_datetime('today').date()
-        last_7_days = pd.date_range(start=today - pd.Timedelta(days=6), end=today)
-        usage_counts = df_filtered['Date'].value_counts().reindex(last_7_days.date, fill_value=0).sort_index()
-        usage_data = {"labels": [d.strftime('%a') for d in usage_counts.index], "data": usage_counts.values.tolist()}
-        
-        return {"totalInteractions": total_interactions, "unanswered": unanswered_count, "kbDocs": kb_docs_count, "faqs": faqs_count, "usage": usage_data, "unansweredList": unanswered_list}
+        # --- Defaults ---
+        total_interactions = 0
+        unanswered_count = 0
+        unanswered_list = []
+        usage_data = {"labels": [], "data": []}
+        feedback_counts = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+
+        # --- Process Chat History ---
+        if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 0:
+            df = pd.read_csv(LOG_FILE, on_bad_lines='skip')
+            if not df.empty:
+                df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+                df_filtered = df[~df['Query'].str.startswith('PROACTIVE_', na=False)]
+                total_interactions = len(df_filtered)
+                unanswered_string = "I don't have that information right now"
+                unanswered_df = df_filtered[df_filtered['Answer'].str.contains(unanswered_string, na=False)]
+                unanswered_count = len(unanswered_df)
+
+                unanswered_list = unanswered_df.sort_values(by='Timestamp', ascending=False).head(10)['Query'].tolist()
+
+                df_filtered['Date'] = df_filtered['Timestamp'].dt.date
+                today = pd.to_datetime('today').date()
+                last_7_days = pd.date_range(start=today - pd.Timedelta(days=6), end=today)
+                usage_counts = df_filtered['Date'].value_counts().reindex(last_7_days.date, fill_value=0).sort_index()
+                usage_data = {"labels": [d.strftime('%a') for d in usage_counts.index], "data": usage_counts.values.tolist()}
+
+        # --- NEW: Process Feedback History ---
+        if os.path.exists(FEEDBACK_LOG_FILE) and os.path.getsize(FEEDBACK_LOG_FILE) > 0:
+            df_feedback = pd.read_csv(FEEDBACK_LOG_FILE, on_bad_lines='skip')
+            if not df_feedback.empty and 'Rating' in df_feedback.columns:
+                # Get value counts, convert index to string to match our dict keys
+                counts = df_feedback['Rating'].astype(str).value_counts()
+                # Update the defaults with any counts found
+                feedback_counts.update(counts.to_dict())
+
+        return {
+            "totalInteractions": total_interactions, 
+            "unanswered": unanswered_count, 
+            "kbDocs": kb_docs_count, 
+            "faqs": faqs_count, 
+            "usage": usage_data, 
+            "unansweredList": unanswered_list,
+            "feedbackCounts": feedback_counts  # <-- NEW DATA ADDED
+        }
+
     except Exception as e:
         logging.error(f"Error processing analytics: {e}")
-        return {"totalInteractions": "Error", "unanswered": "Error", "kbDocs": "Error", "faqs": "Error", "usage": {"labels": [], "data": []}, "unansweredList": ["Error reading log file"]}
-
+        return {"totalInteractions": "Error", "unanswered": "Error", "kbDocs": "Error", "faqs": "Error", "usage": {"labels": [], "data": []}, "unansweredList": ["Error reading log file"], "feedbackCounts": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}}
+    
 # --- NEW: Endpoint for exporting unanswered questions ---
 @app.get("/admin/export_feedback", tags=["Admin"], dependencies=[Depends(get_current_active_user)])
 def export_feedback_log(start_date: Optional[str] = Query(None), end_date: Optional[str] = Query(None)):

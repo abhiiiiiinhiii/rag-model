@@ -155,7 +155,12 @@
                         </div>
                         <ul id="unanswered-list" class="space-y-3 mb-6"></ul>
                         <!-- NEW: Export section for unanswered questions -->
-                           
+                        <div class="border-t border-gray-200 pt-4 mt-6">
+                        <h3 class="text-xl font-semibold mb-4">Feedback Ratings</h3>
+                        <div id="feedback-chart-container" class="h-64 relative">
+                            <canvas id="feedback-pie-chart"></canvas>
+                        </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -270,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- STATE MANAGEMENT ---
     let easyMDEInstance = null;
     let usageChart = null;
+    let feedbackChart = null;
 
     const appState = {
         currentUser: null,
@@ -416,6 +422,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- RENDER FUNCTIONS ---
     const renderDashboard = () => {
+        if (usageChart) usageChart.destroy(); // <-- ADD THIS
+        if (feedbackChart) feedbackChart.destroy();
         const { totalInteractions, unanswered, kbDocs, faqs, usage, unansweredList } = appState.analytics;
         document.getElementById('metric-total-interactions').textContent = totalInteractions;
         document.getElementById('metric-unanswered').textContent = unanswered;
@@ -442,6 +450,50 @@ document.addEventListener('DOMContentLoaded', () => {
             data: { labels: usage.labels, datasets: [{ label: 'Interactions', data: usage.data, borderColor: 'rgba(79, 70, 229, 1)', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4 }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
+        const pieContainer = document.getElementById('feedback-chart-container');
+    const pieData = [
+        feedbackCounts["1"] || 0,
+        feedbackCounts["2"] || 0,
+        feedbackCounts["3"] || 0,
+        feedbackCounts["4"] || 0,
+        feedbackCounts["5"] || 0,
+    ];
+
+    // If there is no data, show a message instead of an empty chart
+    if (pieData.every(item => item === 0)) {
+        pieContainer.innerHTML = '<p class="text-center text-gray-500 py-20">No feedback data yet.</p>';
+    } else {
+        // Ensure the canvas is present
+        pieContainer.innerHTML = '<canvas id="feedback-pie-chart"></canvas>';
+        const pieCtx = document.getElementById('feedback-pie-chart').getContext('2d');
+        feedbackChart = new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: [
+                        '#ef4444', // 1 star (red-600)
+                        '#f97316', // 2 star (orange-500)
+                        '#eab308', // 3 star (yellow-500)
+                        '#84cc16', // 4 star (lime-500)
+                        '#22c55e', // 5 star (green-500)
+                    ],
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
     };
     const renderActivityLog = () => {
         const listEl = document.getElementById('activity-list');
