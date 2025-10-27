@@ -885,6 +885,7 @@ const widgetCSS = `
 
             // Automatically close after a delay
             setTimeout(() => {
+                startNewConversation(); // <-- ADD THIS LINE
                 closeFeedbackModal(true);
             }, 2000);
         });
