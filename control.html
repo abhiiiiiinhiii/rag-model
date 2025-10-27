@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderDashboard = () => {
         if (usageChart) usageChart.destroy(); // <-- ADD THIS
         if (feedbackChart) feedbackChart.destroy();
-        const { totalInteractions, unanswered, kbDocs, faqs, usage, unansweredList } = appState.analytics;
+        const { totalInteractions, unanswered, kbDocs, faqs, usage, unansweredList, feedbackCounts } = appState.analytics;
         document.getElementById('metric-total-interactions').textContent = totalInteractions;
         document.getElementById('metric-unanswered').textContent = unanswered;
         document.getElementById('metric-kb-docs').textContent = kbDocs;
