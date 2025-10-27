@@ -28,6 +28,7 @@ services:
       - ./chroma_db_wms_faq:/app/chroma_db_wms_faq
       - ./chat_history.csv:/app/chat_history.csv
       - ./feedback_log.csv:/app/feedback_log.csv
+      - ./activity_log.csv:/app/activity_log.csv
       - ./huggingface_cache:/root/.cache/huggingface
     depends_on:
       - redis
