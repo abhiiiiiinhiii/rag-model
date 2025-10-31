@@ -175,7 +175,7 @@ class WMSChatbot:
                     "answer": results['metadatas'][i].get('faq_answer', '')
                 })
         return processed_faqs
-    def _update_user_history(self, session_id: str, user_id: str):
+    def _update_user_history(self, session_id: str, user_id: str, client_id: str):
             """
             Updates the user's history list by moving the current session_id to the top
             and updating its "last modified" timestamp.

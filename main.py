@@ -381,7 +381,7 @@ def get_admin_panel():
         raise HTTPException(status_code=404, detail="Control panel HTML file not found.")
     
 @app.get("/history/user/{user_id}", response_model=HistoryListResponse, tags=["Chat"])
-def get_user_history(user_id: str, page: int = 1, size: int = 5):
+def get_user_history(user_id: str, client_id: str = Query(...), page: int = 1, size: int = 5):
     """Retrieves a paginated list of chat sessions for a given user."""
     try:
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
