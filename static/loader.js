@@ -391,8 +391,14 @@ const widgetCSS = `
         // --- Config ---
         const API_URL = CHATBOT_SERVER_URL;
         const WMS_API_BASE_URL = 'http://api.your-wms.com';
-        const userId = 'holisol_internal_user_01'; // Hardcoded user ID for now
         let historyPage = 1; // For pagination
+
+        // --- [NEW] DYNAMIC USER DATA ---
+        const wmsData = window.wmsUserData || {};
+        const userId = wmsData.user_id ? String(wmsData.user_id) : 'unknown_user_fallback';
+        const CLIENT_ID = wmsData.client_id ? String(wmsData.client_id) : 'common_fallback';
+        const userName = wmsData.user_name || 'User';
+        // --- [END] DYNAMIC USER DATA ---
         
         // --- NEW: Session Management ---
         let sessionId;
@@ -408,8 +414,6 @@ const widgetCSS = `
         };
 
         let currentMessages = [];
-        const CLIENT_ID = "modicare";
-
         // --- Widget Visibility ---
         const toggleWidget = (forceOpen = null) => {
             const isOpen = chatWidget.classList.contains('open');
