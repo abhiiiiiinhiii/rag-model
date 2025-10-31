@@ -399,18 +399,20 @@ const widgetCSS = `
         const CLIENT_ID = wmsData.client_id ? String(wmsData.client_id) : 'common_fallback';
         const userName = wmsData.user_name || 'User';
         // --- [END] DYNAMIC USER DATA ---
-        
+
         // --- NEW: Session Management ---
         let sessionId;
         const initializeSession = () => {
-            // Try to get an existing session ID from the browser's local storage
-            sessionId = localStorage.getItem('holibot_session_id');
-            // If no session ID is found (e.g., first visit), create a new one
-            if (!sessionId) {
-                sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                // Store the new session ID in local storage for persistence
-                localStorage.setItem('holibot_session_id', sessionId);
-            }
+        // --- [NEW] Create a client-specific key for localStorage ---
+        const storageKey = `holibot_session_id_${CLIENT_ID}`;
+        // Try to get an existing session ID *for this specific client*
+        sessionId = localStorage.getItem(storageKey);
+
+        if (!sessionId) {
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // Store the new session ID in localStorage *using the client-specific key*
+        localStorage.setItem(storageKey, sessionId);
+        }
         };
 
         let currentMessages = [];
@@ -435,7 +437,7 @@ const widgetCSS = `
             loadMoreButton.textContent = 'Loading...';
 
             try {
-                const response = await fetch(`${API_URL}/history/user/${userId}?page=${page}&size=5`);
+                const response = await fetch(`${API_URL}/history/user/${userId}?client_id=${CLIENT_ID}&page=${page}&size=5`);
                 if (!response.ok) throw new Error('Failed to fetch history');
                 
                 const data = await response.json();
@@ -482,7 +484,8 @@ const widgetCSS = `
                 }
 
                 sessionId = id;
-                localStorage.setItem('holibot_session_id', sessionId); // Set the current session as active
+                const storageKey = `holibot_session_id_${CLIENT_ID}`;
+                localStorage.setItem(storageKey, sessionId);
                 currentMessages = data.messages;
 
                 chatBox.innerHTML = '';
@@ -613,9 +616,9 @@ const widgetCSS = `
         
         const startNewConversation = () => {
             historyView.classList.remove('open');
-            // --- MODIFIED: Generate a new session ID and save it to local storage ---
+            const storageKey = `holibot_session_id_${CLIENT_ID}`;
             sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            localStorage.setItem('holibot_session_id', sessionId);
+            localStorage.setItem(storageKey, sessionId);
             
             currentMessages = [];
             
@@ -875,10 +878,12 @@ const widgetCSS = `
             }
             
             const feedbackData = {
-                sessionId: sessionId,
-                rating: currentRating,
-                comment: comment
-            };
+            sessionId: sessionId,
+            rating: currentRating,
+            comment: comment,
+            user_id: userId,      // <-- ADD THIS
+            client_id: CLIENT_ID  // <-- ADD THIS
+        };
             
             // --- BACKEND INTEGRATION POINT ---
             // In a real application, you would send this data to your server.

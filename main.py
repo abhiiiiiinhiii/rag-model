@@ -88,17 +88,17 @@ app.add_middleware(
 
 # --- Logging Setup ---
 LOG_FILE = 'chat_history.csv'
-LOG_HEADERS = ['Timestamp', 'ClientID', 'Query', 'Answer']
+LOG_HEADERS = ['Timestamp', 'ClientID', 'UserID', 'Query', 'Answer']
 CONFIDENCE_THRESHOLD = 85
 # ADD THIS NEW FUNCTION
 FEEDBACK_LOG_FILE = 'feedback_log.csv'
-FEEDBACK_LOG_HEADERS = ['Timestamp', 'SessionID', 'Rating', 'Comment']
+FEEDBACK_LOG_HEADERS = ['Timestamp', 'SessionID', 'UserID', 'ClientID', 'Rating', 'Comment']
 ACTIVITY_LOG_FILE = 'activity_log.csv'
 ACTIVITY_LOG_HEADERS = ['Timestamp', 'User', 'Action', 'Description']
 
-def log_conversation(client_id: str, query: str, answer: str):
+def log_conversation(client_id: str, user_id: str, query: str, answer: str):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    row = [timestamp, client_id, query, answer]
+    row = [timestamp, client_id, user_id, query, answer]
     file_exists = os.path.isfile(LOG_FILE)
     try:
         with open(LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
@@ -197,6 +197,8 @@ class FeedbackRequest(BaseModel):
     sessionId: str
     rating: int
     comment: Optional[str] = None
+    user_id: str      # <-- ADD THIS
+    client_id: str    # <-- ADD THIS
 
 # --- Utility Functions for Auth ---
 def get_user(db, username: str):
@@ -210,10 +212,10 @@ def create_access_token(data: dict):
 
 
 
-def log_feedback(session_id: str, rating: int, comment: str):
+def log_feedback(session_id: str, user_id: str, client_id: str, rating: int, comment: str):
     """Writes feedback to a CSV file."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    row = [timestamp, session_id, rating, comment]
+    row = [timestamp, session_id, user_id, client_id, rating, comment]
     file_exists = os.path.isfile(FEEDBACK_LOG_FILE)
     try:
         with open(FEEDBACK_LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
@@ -279,7 +281,7 @@ async def chat_with_bot(req: ChatRequest):
             finally:
                 final_answer = "".join(full_answer_parts)
                 if final_answer:
-                    log_conversation(req.client_id, req.query, final_answer)
+                    log_conversation(req.client_id, req.user_id, req.query, final_answer)
         
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
         
@@ -346,7 +348,7 @@ async def ingest_faqs(req: IngestFAQRequest):
 async def receive_feedback(req: FeedbackRequest):
     """Receives and logs user feedback from the chat widget."""
     try:
-        log_feedback(req.sessionId, req.rating, req.comment)
+        log_feedback(req.sessionId, req.user_id, req.client_id, req.rating, req.comment)
         return {"status": "success", "message": "Feedback received"}
     except Exception as e:
         logging.error(f"Error handling feedback: {e}")
@@ -385,7 +387,7 @@ def get_user_history(user_id: str, page: int = 1, size: int = 5):
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
         r = redis.from_url(redis_url)
 
-        user_history_key = f"user_sessions:{user_id}"
+        user_history_key = f"user_sessions:{user_id}:{client_id}"
         start = (page - 1) * size
         end = start + size - 1
 

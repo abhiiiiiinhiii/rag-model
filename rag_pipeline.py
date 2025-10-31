@@ -181,7 +181,7 @@ class WMSChatbot:
             and updating its "last modified" timestamp.
             """
             try:
-                user_history_list_key = f"user_sessions:{user_id}"
+                user_history_list_key = f"user_sessions:{user_id}:{client_id}"
                 # Atomically remove any existing instance and push it to the top.
                 self.redis_client.lrem(user_history_list_key, 0, session_id)
                 self.redis_client.lpush(user_history_list_key, session_id)
@@ -385,7 +385,7 @@ class WMSChatbot:
                     history.add_user_message(query)
                     history.add_ai_message(faq_answer)
                     # Use the new "move-to-top" function
-                    self._update_user_history(session_id, user_id)
+                    self._update_user_history(session_id, user_id, client_id)
 
                 yield faq_answer
                 
@@ -434,7 +434,7 @@ class WMSChatbot:
 
         if not is_welcome_suggestion:
             # Use the new "move-to-top" function
-            self._update_user_history(session_id, user_id)
+            self._update_user_history(session_id, user_id, client_id)
     def ask_error_solution(self, query: str, llm: ChatGoogleGenerativeAI):
         error_solution_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a technical analyst. Based on the CONTEXT and the user's QUESTION, generate a JSON object with "answer" and "confidence_score" keys.
