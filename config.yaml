@@ -1,5 +1,3 @@
-# config.yaml
-
 tier_keys:
   google:
     free: ""
@@ -7,11 +5,11 @@ tier_keys:
 
 clients:
   Test_Client:
-    name: "modicare"
+    name: "Test_Client"  # <-- FIX: Changed from "modicare"
     tier: "paid"
     service: "google"
 
   oriflame:
-    name: "modicare"
+    name: "oriflame"      # <-- FIX: Changed from "modicare"
     tier: "free"
     service: "google"
