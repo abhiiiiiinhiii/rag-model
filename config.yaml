@@ -6,7 +6,7 @@ tier_keys:
     paid: ""
 
 clients:
-  modicare:
+  Test_Client:
     name: "modicare"
     tier: "paid"
     service: "google"
